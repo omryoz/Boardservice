@@ -209,7 +209,7 @@ public class SMFPokerLoginServiceImpl implements LoginHandler {
 				
 				String escapePwdHTML = StringEscapeUtils.escapeHtml(password);
 				log.debug("escapeHTML = " + escapePwdHTML);
-				String pwdSha1 = getSha1(user.toLowerCase()+password);
+				String pwdSha1 = HashHelper.getSha1(user.toLowerCase()+password);
 
 				log.debug("pwdSha1 = " + pwdSha1);
 	
@@ -219,13 +219,13 @@ public class SMFPokerLoginServiceImpl implements LoginHandler {
 				
 				if (pwdSha1 != null && members_pass_hash != null) {
 					if (pwdSha1.equals(members_pass_hash)) {
-						if (posts >= 1) {
+/*						if (posts >= 1) {
 							return String.valueOf(member_id);
 						} else {
 							log.debug("Required number of posts not met, denied login");
 							return "-2";
 						}
-					} else {
+*/					} else {
 						log.debug("hash not matched for user " + user + " password " + password);
 						return "-1";
 					}
@@ -263,24 +263,6 @@ public class SMFPokerLoginServiceImpl implements LoginHandler {
 		} catch (Exception e) {
 
 		}
-	}
-
-	private synchronized String getSha1(String input) {
-		try {
-			
-			String hashType = "SHA1";
-			MessageDigest md = MessageDigest.getInstance(hashType);
-			md.update(input.getBytes());
-			
-			byte[] output = md.digest();
-
-			String hashPassword = HashHelper.bytesToHex(output);			
-
-			return hashPassword;
-		} catch (Exception e) {
-			log.error("Exception: " + e);
-		}
-        return null;
 	}
 
 

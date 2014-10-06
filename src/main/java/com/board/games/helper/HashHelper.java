@@ -17,10 +17,17 @@
 
 package com.board.games.helper;
 
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+import org.apache.log4j.Logger;
 
 public class HashHelper {
 
+	private static Logger log = Logger.getLogger(HashHelper.class);
+	
 	public static void main(String[] a) {
 		boolean authenticated = authenticate(
 				"rememberme",
@@ -89,4 +96,86 @@ public class HashHelper {
 	}
 	
 
+	public static synchronized String getSha1(String input) {
+		try {
+			
+			String hashType = "SHA1";
+			MessageDigest md = MessageDigest.getInstance(hashType);
+			md.update(input.getBytes());
+			
+			byte[] output = md.digest();
+
+			String hashPassword = bytesToHex(output);			
+
+			return hashPassword;
+		} catch (Exception e) {
+			log.error("Exception: " + e);
+		}
+        return null;
+	}	
+	
+	public static synchronized String getMD5(String input) {
+		try {
+			MessageDigest md = MessageDigest.getInstance("MD5");
+			byte[] messageDigest = md.digest(input.getBytes("UTF-8"));
+			BigInteger number = new BigInteger(1, messageDigest);
+			String hashtext = number.toString(16);
+			// Now we need to zero pad it if you actually want the full 32
+			// chars.
+			while (hashtext.length() < 32) {
+				hashtext = "0" + hashtext;
+			}
+			return hashtext;
+		} catch (NoSuchAlgorithmException e) {
+			throw new RuntimeException(e);
+        } catch (UnsupportedEncodingException ex) {
+            ex.printStackTrace();
+        }
+        return null;
+	}	
+	
+	
+	public static  synchronized String getAlternativeMD5(String input) {
+        // please note that we dont use digest, because if we
+        // cannot get digest, then the second time we have to call it
+        // again, which will fail again
+        MessageDigest digest = null;
+
+        try {
+            digest = MessageDigest.getInstance("MD5");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
+        if (digest == null)
+            return input;
+
+        // now everything is ok, go ahead
+        try {
+            digest.update(input.getBytes("UTF-8"));
+        } catch (java.io.UnsupportedEncodingException ex) {
+            ex.printStackTrace();
+        }
+        
+        
+        final StringBuilder sbMd5Hash = new StringBuilder();
+
+        final byte data[] = digest.digest();
+
+/*	        for (byte element : data) {
+        sbMd5Hash.append(Character.forDigit((element >> 4) & 0xf, 16));
+        sbMd5Hash.append(Character.forDigit(element & 0xf, 16));
+        }
+$%6e!df fek@&^$345M
+pkrGlr1Test
+        
+        return sbMd5Hash.toString();
+*/	        //final byte[] md5Digest = md.digest(password.getBytes());
+
+        final BigInteger md5Number = new BigInteger(1, data);
+        final String md5String = md5Number.toString(16);
+        return md5String;
+        
+	}
+	
 }

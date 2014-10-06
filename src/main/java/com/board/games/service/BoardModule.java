@@ -24,15 +24,16 @@ import org.apache.log4j.Logger;
 import org.ini4j.Ini;
 
 import com.board.games.service.discuz.DiscuzBoardService;
+import com.board.games.service.dolphin.DolphinBoardService;
 import com.board.games.service.generic.GenericBoardService;
 import com.board.games.service.ipb.IPBBoardService;
 import com.board.games.service.jl.JLBoardService;
 import com.board.games.service.modx.MODXBoardService;
 import com.board.games.service.phpbb3.PHPBB3BoardService;
 import com.board.games.service.smf.SMFBoardService;
-import com.board.games.service.xf.XFBoardService;
 import com.board.games.service.vanilla.VanillaBoardService;
 import com.board.games.service.xbtit.XbtitBoardService;
+import com.board.games.service.xf.XFBoardService;
 import com.google.inject.AbstractModule;
 
 public class BoardModule extends AbstractModule {
@@ -73,6 +74,9 @@ public class BoardModule extends AbstractModule {
 			} else if (boardType.equals("Xbtit") || boardType.equals("9")) {
 				log.debug("Inside configure : Xbtit found");
 				bind(BoardService.class).to(XbtitBoardService.class);
+			} else if (boardType.equals("Dolphin") || boardType.equals("10")) {
+				log.debug("Inside configure : Dolphin found");
+				bind(BoardService.class).to(DolphinBoardService.class);
 			} else {
 				log.debug("Inside configure : *** NO BOARD TYPE *** found");
 				bind(BoardService.class).to(GenericBoardService.class);

@@ -14,15 +14,11 @@
  * A copy of the license can be viewed in the docs/LICENSE.txt file.
  * The same can be viewed at <http://opensource.org/licenses/gpl-2.0.php>
  */
+package com.board.games.handler.dolphin;
 
-package com.board.games.handler.ipb;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -30,13 +26,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.ini4j.Ini;
 
 import com.board.games.config.ServerConfig;
 import com.board.games.handler.generic.PokerConfigHandler;
-import com.board.games.helper.BCrypt;
 import com.board.games.helper.HashHelper;
 import com.board.games.service.wallet.WalletAdapter;
 import com.cubeia.firebase.api.action.local.LoginRequestAction;
@@ -44,8 +38,11 @@ import com.cubeia.firebase.api.action.local.LoginResponseAction;
 import com.cubeia.firebase.api.login.LoginHandler;
 import com.cubeia.firebase.api.service.ServiceRouter;
 
-public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements LoginHandler {
+public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements LoginHandler {
 
+
+
+  
 	private static AtomicInteger pid = new AtomicInteger(0);
 	private Logger log = Logger.getLogger(this.getClass());
 	private ServiceRouter router;
@@ -56,8 +53,24 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 	private String connectionStr = "";
 	private String jdbcDriverClassName = "";
 	private String dbPrefix = "";
-	  private static boolean newIPB4Version = false;
 
+	
+	public static void main(String[] a) {
+		
+
+			String members_pass_salt = "YjhiNGM1";
+			String password = "Master.Mind";
+			String members_pass_hash = "6f3a216e1ed5466f792b28722b74cebc44c641e1";
+			
+			String hashedPwd = HashHelper.getSha1(HashHelper.getMD5(password)+members_pass_salt);
+		
+			System.out.println("hashedPwd =  " + hashedPwd);
+			// Master.Mind = fb46cc7cf9e9f5cdc9d0e7c7b994774cd4348e96 salt=YzQ2ODU4
+			if (hashedPwd != null && members_pass_hash != null) {
+				System.out.println(hashedPwd.equals(members_pass_hash) ? "Password successful matched" : "Password not matched");
+			} 
+		
+	}  	
 	protected void initialize() {
 		super.initialize();
 		try {
@@ -65,56 +78,31 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			String jdbcDriver = ini.get("JDBCConfig", "jdbcDriver");
 			String connectionUrl = ini.get("JDBCConfig", "connectionUrl");
 			String database = ini.get("JDBCConfig", "database");
-			String ipbVersion = "";
 			dbPrefix = ini.get("JDBCConfig", "dbPrefix");
 			String user = ini.get("JDBCConfig", "user");
 			String password = ini.get("JDBCConfig", "password");
-	/*			currency = ini.get("JDBCConfig", "currency");
-			walletBankAccountId = ini.get("JDBCConfig", "walletBankAccountId");
-			initialAmount = ini.get("JDBCConfig", "initialAmount");
-			useIntegrations = ini.get("JDBCConfig", "useIntegrations");
-			serverCfg = new ServerConfig(currency, new Long(walletBankAccountId), new BigDecimal(initialAmount), useIntegrations.equals("Y")? true:false);
-	*/
-			ipbVersion = ini.get("JDBCConfig", "ipbVersion");
-			if (!ipbVersion.equals("") && "IPS4".equals(ipbVersion.toUpperCase())) {
-				newIPB4Version = true;
-				log.debug("Detecting  IPS4 versionx");
-			}
 			jdbcDriverClassName = ini.get("JDBCConfig", "driverClassName");
 			connectionStr = "jdbc" + ":" + jdbcDriver + "://" + connectionUrl
 					+ "/" + database + "?user=" + user + "&password="
 					+ password;
-			log.debug("User " + user);
-			//log.debug("connectionStr " + connectionStr);
+					
 		} catch (IOException ioe) {
 			log.error("Exception in initialize " + ioe.toString());
 		} catch (Exception e) {
 			log.error("Exception in initialize " + e.toString());
 		}
-		
 	}
 	@Override
 	public LoginResponseAction handle(LoginRequestAction req) {
-		// At this point, we should get the user name and password
-		// from the request and verify them, but for this example
-		// we'll just assign a dynamic player ID and grant the login
-/*		String currency = "USD";
-		String walletBankAccountId = "2";
-		String initialAmount = "1000";
-		String useIntegrations = "Y";
-		ServerConfig serverCfg=null;*/
 			// Must be the very first call
-			initialize();			
-
+			initialize();		
 		LoginResponseAction response = null;
 		try {
-			log.debug("Performing authentication on " + req.getUser());
+
 			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg());
 			if (!userIdStr.equals("")) {
-				
 				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
 						Integer.parseInt(userIdStr)); // pid.incrementAndGet()
-				log.debug(Integer.parseInt(userIdStr) > 0?"Authentication successful":"Authentication failed");
 				return response;
 			}
 		} catch (SQLException sqle) {
@@ -178,7 +166,12 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 	}
 
 	private String authenticate(String user, String password, ServerConfig serverConfig) throws Exception {
+		String selectSQL = "";
 		try {
+			if (serverConfig == null) {
+				log.error("ServerConfig is null.");
+				return "-3";
+			}			
 			int idx = user.indexOf("_");
 			if (idx != -1) {
 				// let bots through
@@ -197,10 +190,9 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 				}
 			}
 			if (user.toUpperCase().startsWith("GUESTXDEMO")) {
-				return String.valueOf(pid.incrementAndGet()+500000);
-			}
-			
-			log.debug("loading class name for database connection" + jdbcDriverClassName);
+				return String.valueOf(pid.incrementAndGet());
+			}			
+			log.debug("loading class name " + jdbcDriverClassName);
 			// This will load the MySQL driver, each DB has its own driver
 			// "com.mysql.jdbc.Driver"
 			Class.forName(jdbcDriverClassName);
@@ -211,106 +203,75 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			// Statements allow to issue SQL queries to the database
 			statement = connect.createStatement();
 			log.debug("Execute query: authenticate");
-			// Result set get the result of the SQL query
-			// SELECT * FROM ipb3_members WHERE members_seo_name = ''
-			String data = newIPB4Version ? "core_members " : "members ";
-			String selectSQL = "select members_seo_name,  member_id, name, "
-					+ " members_pass_hash,  members_pass_salt,  "
-					+ " title, posts from " + dbPrefix + data
-					+ " where name = " + "\'" + user + "\'";
-			
-				
+			selectSQL = "select ID, NickName, Password, Salt, Avatar from  " + dbPrefix + "profiles "
+					+ " where NickName  = " + "\'" + user + "\'";
 			log.debug("Executing query : " + selectSQL);
 			resultSet = statement.executeQuery(selectSQL);
 			String checkPwdHash = null;
 			String checkPwdHashNew = null;
 			String members_pass_hash = null;
+			String members_pass_salt = null;
+			String members_display_name = null;
+			boolean authenticated = false;
+
 			int member_id = 0;
 			int posts = 0;
-			boolean authenticated = false;
 			if (resultSet != null && resultSet.next()) {
 				String members_seo_name = resultSet
-						.getString("members_seo_name");
-				member_id = resultSet.getInt("member_id");
-				String name = resultSet.getString("name");
-				members_pass_hash = resultSet.getString("members_pass_hash");
+						.getString("NickName");
+				member_id = resultSet.getInt("ID");
+				members_display_name = resultSet.getString("NickName");
+				members_pass_hash = resultSet.getString("Password");
+				members_pass_salt = resultSet.getString("Salt");
 				
-				log.debug("DB members_pass_hash = " + members_pass_hash);
+				log.error("DB members_pass_hash = " + members_pass_hash);
 				
-				String members_pass_salt = resultSet
-						.getString("members_pass_salt");
-				//String members_display_name = resultSet
-				//		.getString("members_display_name");
-				String title = resultSet.getString("title");
-				posts = resultSet.getInt("posts");
-				log.debug("User: " + user + " Password " + "**********");
+		//		posts = resultSet.getInt("user_posts");
+	//			log.debug("# of Post " + posts);
 				
-				String escapePwdHTML = StringEscapeUtils.escapeHtml(password);
-				log.debug("escapeHTML = " + escapePwdHTML);
+				log.debug("User: " + user + " Password " + "********");
+	//			UPDATE `Profiles` SET `Salt` = CONV(FLOOR(RAND()*99999999999999), 10, 36) WHERE `ID`='1';			
+	//			UPDATE `Profiles` SET `Password` = SHA1(CONCAT(md5('Master.Mind'), `Salt`)) WHERE `ID`='1';
 				
-				if (!newIPB4Version) {
-					String pwdMD5 = HashHelper.getMD5(password);
-	
-					log.debug("pwdMD5 = " + pwdMD5);
-					
-					
-					String pwdSaltMD5 = HashHelper.getMD5(members_pass_salt);
-					if (pwdSaltMD5 == null)
-						log.debug("pwdMD5 is null");
-					
-	
-					log.debug("pwdSaltMD5 = " + pwdSaltMD5);
-					
-					if (pwdMD5 != null) {
-						checkPwdHash = HashHelper.getMD5(pwdSaltMD5 + pwdMD5);
-						log.debug("checkPwdHash = " + checkPwdHash);
-					}
-					else
-						log.debug("pwdMD5 is null");
-					
+				String hashedPwd = HashHelper.getSha1(HashHelper.getMD5(password)+members_pass_salt);
+				log.error("hashedPwd = " + hashedPwd);
 				
-					if (checkPwdHash != null && members_pass_hash != null) {
-						if (checkPwdHash.equals(members_pass_hash)) {
-							authenticated = true;
-						}
-					}
-				} else {
-					authenticated = BCrypt.checkpw(escapePwdHTML,members_pass_hash);
-										
+				// Master.Mind = fb46cc7cf9e9f5cdc9d0e7c7b994774cd4348e96 salt=YzQ2ODU4
+				if (hashedPwd != null && members_pass_hash != null) {
+					authenticated = hashedPwd.equals(members_pass_hash) ? true : false;
 				}
-				log.debug("members_pass_hash = " + members_pass_hash);
-				log.debug("# of Post " + posts);
 				
+
+				
+					
 				if (authenticated) {
-					if (serverConfig != null) {	
+					log.debug("Authentication successful");
+					
+					log.debug("Member id " + String.valueOf(member_id));
+					
 					if (serverConfig.isUseIntegrations()) {
 						
 						WalletAdapter walletAdapter = new WalletAdapter();
-						log.debug("Calling createWalletAccount");
+						log.error("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount());
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_display_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount());
 						log.debug("assigned new id as #" + String.valueOf(userId));
-						return String.valueOf(userId);
-/*						if (posts >= 1) {
-								return String.valueOf(member_id);
-							} else {
-								log.error("Required number of posts not met, denied login");
-								return "-2";
-							}
-*/
+						return String.valueOf(userId);	
 					} else {
 						return String.valueOf(member_id);
 					}
 					
-				} else {
-					log.error("ServerConfig is null.");
-				}						
+/*						if (posts >= 1) {
+							return String.valueOf(member_id);
 						} else {
-					log.error("Authenticated failed: hash not matched for user " + user + " password " + password);
+							log.error("Required number of posts not met, denied login");
+							return "-2";
+						}*/
+				} else {
+					log.error("hash not matched for user " + user + " password " + password);
 					return "-1";
 				}
-
-				
+		
 			} else {
 				log.error("resultset is null " + selectSQL);
 			}
@@ -345,6 +306,5 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 		}
 	}
 
-	
-	
+
 }
