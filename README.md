@@ -34,19 +34,27 @@ Xenforo and Dolphin 7. Open source boards are phpBB3, SMF, Vanilla, Discuz Inter
 
 Here is some screen shots:
 
-[img]http://boardservice.org/gallery/ForumIAmLegend.jpg[/img]
-[img]http://boardservice.org/gallery/ForumLuckyAndKiller.jpg[/img]
+![Image](http://boardservice.org/gallery/ForumIAmLegend.jpg?raw=true)
 
-[img]http://boardservice.org/gallery/PreFlop.jpg[/img]
-[img]http://boardservice.org/gallery/Flop.jpg[/img]
-[img]http://boardservice.org/gallery/Turn.jpg[/img]
-[img]http://boardservice.org/gallery/River.jpg[/img]
+![Image](http://boardservice.org/gallery/ForumLuckyAndKiller.jpg?raw=true)
 
+![Image](http://boardservice.org/gallery/PreFlop.jpg?raw=true)
 
-[img]http://boardservice.org/gallery/BotPlayBig.jpg[/img]
-[img]http://boardservice.org/gallery/LuckyRaise.jpg[/img]
-[img]http://boardservice.org/gallery/KillerCallBotRaise.jpg[/img]
-[img]http://boardservice.org/gallery/AllInsWaiting4Bot.jpg[/img]
-[img]http://boardservice.org/gallery/Showdown.jpg[/img]
-[img]http://boardservice.org/gallery/ShotdownHandHistory.jpg[/img]
+![Image](http://boardservice.org/gallery/Flop.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/Turn.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/River.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/BotPlayBig.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/LuckyRaise.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/KillerCallBotRaise.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/AllInsWaiting4Bot.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/Showdown.jpg?raw=true)
+
+![Image](http://boardservice.org/gallery/ShotdownHandHistory.jpg?raw=true)
 
