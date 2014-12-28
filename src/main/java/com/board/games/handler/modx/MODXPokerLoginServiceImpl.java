@@ -19,10 +19,6 @@ package com.board.games.handler.modx;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -30,19 +26,28 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.commons.lang.StringEscapeUtils;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+
+import org.apache.commons.codec.binary.Base64;
 import org.apache.log4j.Logger;
 import org.ini4j.Ini;
 
-import com.board.games.helper.HashHelper;
+import com.board.games.config.ServerConfig;
+import com.board.games.handler.generic.PokerConfigHandler;
+import com.board.games.service.wallet.WalletAdapter;
 import com.cubeia.firebase.api.action.local.LoginRequestAction;
 import com.cubeia.firebase.api.action.local.LoginResponseAction;
 import com.cubeia.firebase.api.login.LoginHandler;
 import com.cubeia.firebase.api.service.ServiceRouter;
+import com.saltedhashed.Verifier;
+import com.saltedhashed.crypto.PBKDF2Algorithms;
+import com.saltedhashed.model.Algorithm;
+import com.saltedhashed.model.AlgorithmDetails;
+import com.saltedhashed.model.PasswordResponse;
+public class MODXPokerLoginServiceImpl extends PokerConfigHandler implements LoginHandler {
 
-
-public class MODXPokerLoginServiceImpl implements LoginHandler {
-
+  
 	private static AtomicInteger pid = new AtomicInteger(0);
 	private Logger log = Logger.getLogger(this.getClass());
 	private ServiceRouter router;
@@ -54,11 +59,54 @@ public class MODXPokerLoginServiceImpl implements LoginHandler {
 	private String jdbcDriverClassName = "";
 	private String dbPrefix = "";
 
-	@Override
-	public LoginResponseAction handle(LoginRequestAction req) {
-		// At this point, we should get the user name and password
-		// from the request and verify them, but for this example
-		// we'll just assign a dynamic player ID and grant the login
+
+    static {
+        PBKDF2Algorithms.initialize();
+    }
+	
+	public static void main(String[] a) {
+
+		 Verifier verifier = new Verifier();
+
+		String dbHash = "iDxLTbkejeeaQqpPoZTqUCJfWo1ALcBf7gMlYwwMa+Y="; //"dlgQ65ruCfeVVxqHJ3Bf02j50P0Wvis7WOoTfHYV3Nk=";
+		String password = "rememberme"; 
+		String dbSalt = "008747a35b77a4c7e55ab7ea8aec3ee0"; 
+       PasswordResponse response = new PasswordResponse();
+       String salt = "008747a35b77a4c7e55ab7ea8aec3ee0";
+       response.setAlgorithm(Algorithm.PBKDF2);
+       response.setSalt(salt);
+       response.setAlgorithmDetails(new AlgorithmDetails());
+       response.getAlgorithmDetails().setIterations(1000);
+       response.getAlgorithmDetails().setHashFunction("SHA256");
+       response.getAlgorithmDetails().setKeySize(263);
+        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 1000, response.getAlgorithmDetails().getKeySize());
+     try {
+	        SecretKeyFactory skf = PBKDF2Algorithms.getSecretKeyFactory("PBKDF2WithHmac" + response.getAlgorithmDetails().getHashFunction().replace("-", ""));
+	      byte[] hash = skf.generateSecret(spec).getEncoded();
+	      
+	      String encodedHash = Base64.encodeBase64String(hash);
+	      response.setHash(encodedHash);
+
+	      System.out.println("hash " + response.getHash());
+           if (verifier.verify(password, response)){
+        	   // Check it against database stored hash
+        	   if (encodedHash.equals(dbHash)) {
+        		   System.out.println("Authentication Successful");      		   
+        	   } else {
+        		   System.out.println("Authentication failed");    
+        	   }
+           	
+           } else {
+           	System.out.println("failed verification of hashing");
+           }
+       } catch (Exception e) {
+           throw new IllegalStateException(e);
+       }
+	}
+	
+
+	protected void initialize() {
+		super.initialize();
 		try {
 			Ini ini = new Ini(new File("JDBCConfig.ini"));
 			String jdbcDriver = ini.get("JDBCConfig", "jdbcDriver");
@@ -71,23 +119,46 @@ public class MODXPokerLoginServiceImpl implements LoginHandler {
 			connectionStr = "jdbc" + ":" + jdbcDriver + "://" + connectionUrl
 					+ "/" + database + "?user=" + user + "&password="
 					+ password;
-			log.debug("user " + user);
-			log.debug("connectionStr " + connectionStr);
+					
 		} catch (IOException ioe) {
-			log.error("Exception in init " + ioe.toString());
+			log.error("Exception in initialize " + ioe.toString());
 		} catch (Exception e) {
-			log.error("Exception in init " + e.toString());
+			log.error("Exception in initialize " + e.toString());
 		}
-
-		LoginResponseAction response = null;
+	}
+	@Override
+	public LoginResponseAction handle(LoginRequestAction req) {
+			// Must be the very first call
+			initialize();		
+			boolean userHasAcceptedAgeclause = false;
+			log.debug("Data login " + req.getData());
+			int count = 0;
+			int idx = 0;
+			int ref =0;
+			StringBuffer sb = new StringBuffer();
+			for (byte b : req.getData()) {
+				idx++;
+			    log.debug((char)b);
+			    char val = (char)b;
+			//	if (idx >7 )
+			    sb.append(val);
+			    
+			}		
+			//log.debug("count " + count);
+			// TO DBG: activate trace of detail array below
+			log.debug("sb " + sb.toString());
+			 String logindataRequest = 	sb.toString();	
+			 log.debug("logindataRequest" + logindataRequest);
+			 if (logindataRequest.toUpperCase().equals("AGEVERIFICATIONDONE")) {
+				 userHasAcceptedAgeclause = true;
+			 }
+			LoginResponseAction response = null;
 		try {
-			log.debug("Performing authentication on " + req.getUser());
-			String userIdStr = authenticate(req.getUser(), req.getPassword());
+
+			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause);
 			if (!userIdStr.equals("")) {
-				
 				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
 						Integer.parseInt(userIdStr)); // pid.incrementAndGet()
-				log.debug(Integer.parseInt(userIdStr) > 0?"Authentication successful":"Authentication failed");
 				return response;
 			}
 		} catch (SQLException sqle) {
@@ -150,22 +221,34 @@ public class MODXPokerLoginServiceImpl implements LoginHandler {
 		return "User not found or registered but at least 1 post is required to play.";
 	}
 
-	private String authenticate(String user, String password) throws Exception {
+	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge) throws Exception {
+		String selectSQL = "";
 		try {
+			if (serverConfig == null) {
+				log.error("ServerConfig is null.");
+				return "-3";
+			}			
 			int idx = user.indexOf("_");
 			if (idx != -1) {
 				// let bots through
 				String idStr = user.substring(idx+1);
 				if (user.toUpperCase().startsWith("BOT")) {
-					return idStr;
+					if (serverConfig.isUseIntegrations()) {
+						WalletAdapter walletAdapter = new WalletAdapter();
+						log.debug("Calling createWalletAccount");
+						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
+						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true);
+						return String.valueOf(userId);
+					} else {
+						return idStr;
+					}
+
 				}
 			}
 			if (user.toUpperCase().startsWith("GUESTXDEMO")) {
 				return String.valueOf(pid.incrementAndGet());
-			}
-			
-			
-			log.debug("loading class name for database connection" + jdbcDriverClassName);
+			}			
+			log.debug("loading class name " + jdbcDriverClassName);
 			// This will load the MySQL driver, each DB has its own driver
 			// "com.mysql.jdbc.Driver"
 			Class.forName(jdbcDriverClassName);
@@ -176,63 +259,92 @@ public class MODXPokerLoginServiceImpl implements LoginHandler {
 			// Statements allow to issue SQL queries to the database
 			statement = connect.createStatement();
 			log.debug("Execute query: authenticate");
-			// Result set get the result of the SQL query
-			// SELECT * FROM ipb3_members WHERE members_seo_name = ''
-			
-/*			smf_members 
-			password_salt = 0682
-			passwd = 92ff6c5426a23d105af69f49eb9d0210972ecbca
-			id_member
-			posts
-			member_name	*/		
-			
-			String selectSQL = "select member_name, id_member, "
-					+ " passwd,  password_salt,  "
-					+ " posts from " + dbPrefix + "members "
-					+ " where member_name = " + "\'" + user + "\'";
+			selectSQL = "select id, username, password, salt from " + dbPrefix + "users" +
+					 " where username  = " + "\'" + user + "\'";
 			log.debug("Executing query : " + selectSQL);
 			resultSet = statement.executeQuery(selectSQL);
-
 			String members_pass_hash = null;
+			String members_pass_salt = null;
+			String members_display_name = null;
+			boolean authenticated = false;
+
 			int member_id = 0;
 			int posts = 0;
 			if (resultSet != null && resultSet.next()) {
-				member_id = resultSet.getInt("id_member");
-				String name = resultSet.getString("member_name");
-				members_pass_hash = resultSet.getString("passwd");
+				String members_seo_name = resultSet
+						.getString("username");
+				member_id = resultSet.getInt("id");
+				members_display_name = resultSet.getString("username");
+				members_pass_hash = resultSet.getString("password");
+				members_pass_salt = resultSet.getString("salt");
 				
-				log.debug("DB members_pass_hash = " + members_pass_hash);
-
-
-				posts = resultSet.getInt("posts");
-				log.debug("User: " + user + " Password " + password);
+				log.error("DB members_pass_hash = " + members_pass_hash);
 				
-				String escapePwdHTML = StringEscapeUtils.escapeHtml(password);
-				log.debug("escapeHTML = " + escapePwdHTML);
-				String pwdSha1 = getSha1(user.toLowerCase()+password);
-
-				log.debug("pwdSha1 = " + pwdSha1);
+		//		posts = resultSet.getInt("user_posts");
+	//			log.debug("# of Post " + posts);
+				
+				log.debug("User: " + user + " Password " + "********");
 	
-				
-				log.debug("members_pass_hash = " + members_pass_hash);
-				log.debug("# of Post " + posts);
-				
-				if (pwdSha1 != null && members_pass_hash != null) {
-					if (pwdSha1.equals(members_pass_hash)) {
-						if (posts >= 1) {
+				 Verifier verifier = new Verifier();
+
+			       PasswordResponse response = new PasswordResponse();
+			       response.setAlgorithm(Algorithm.PBKDF2);
+			       response.setSalt(members_pass_salt);
+			       response.setAlgorithmDetails(new AlgorithmDetails());
+			       response.getAlgorithmDetails().setIterations(1000);
+			       response.getAlgorithmDetails().setHashFunction("SHA256");
+			       response.getAlgorithmDetails().setKeySize(263);
+			        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), members_pass_salt.getBytes(), 1000, response.getAlgorithmDetails().getKeySize());
+				        SecretKeyFactory skf = PBKDF2Algorithms.getSecretKeyFactory("PBKDF2WithHmac" + response.getAlgorithmDetails().getHashFunction().replace("-", ""));
+				      byte[] hash = skf.generateSecret(spec).getEncoded();
+				      
+				      String encodedHash = Base64.encodeBase64String(hash);
+				      response.setHash(encodedHash);
+
+				      log.debug("Encrypted hash " + response.getHash());
+			           if (verifier.verify(password, response)){
+			        	   // Check it against database stored hash
+			        	   authenticated = encodedHash.equals(members_pass_hash) ? true : false;
+		           	
+			           } else {
+			        	   log.debug("failed verification of hashing");
+			           }
+	
+					
+				if (authenticated) {
+					log.debug("Authentication successful");
+					
+					log.debug("Member id " + String.valueOf(member_id));
+					
+					if (serverConfig.isUseIntegrations()) {
+						
+						WalletAdapter walletAdapter = new WalletAdapter();
+						log.error("Calling createWalletAccount");
+						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_display_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge);
+						if (userId < 0 ) {
+							// user did not accept age clauses
+							return "-5";
+						}
+						log.debug("assigned new id as #" + String.valueOf(userId));
+						return String.valueOf(userId);	
+					} else {
+						return String.valueOf(member_id);
+					}
+					
+/*						if (posts >= 1) {
 							return String.valueOf(member_id);
 						} else {
-							log.debug("Required number of posts not met, denied login");
+							log.error("Required number of posts not met, denied login");
 							return "-2";
-						}
-					} else {
-						log.debug("hash not matched for user " + user + " password " + password);
-						return "-1";
-					}
+						}*/
+				} else {
+					log.error("hash not matched for user " + user + " password " + password);
+					return "-1";
 				}
-				
+		
 			} else {
-				log.debug("resultset is null " + selectSQL);
+				log.error("resultset is null " + selectSQL);
 			}
 			
 
@@ -265,25 +377,5 @@ public class MODXPokerLoginServiceImpl implements LoginHandler {
 		}
 	}
 
-	private synchronized String getSha1(String input) {
-		try {
-			
-			String hashType = "SHA1";
-			MessageDigest md = MessageDigest.getInstance(hashType);
-			md.update(input.getBytes());
-			
-			byte[] output = md.digest();
 
-			String hashPassword = HashHelper.bytesToHex(output);			
-
-			return hashPassword;
-		} catch (Exception e) {
-			log.error("Exception: " + e);
-		}
-        return null;
-	}
-
-
-	
 }
-

@@ -20,7 +20,7 @@ package com.board.games.service.modx;
 import org.apache.log4j.Logger;
 import org.springframework.context.ApplicationContext;
 
-import com.board.games.handler.smf.SMFPokerLoginServiceImpl;
+import com.board.games.handler.modx.MODXPokerLoginServiceImpl;
 import com.board.games.service.common.CommonBoardService;
 import com.cubeia.firebase.api.action.local.LoginRequestAction;
 import com.cubeia.firebase.api.action.service.ClientServiceAction;
@@ -33,7 +33,7 @@ import com.google.inject.Singleton;
 @Singleton
 public class MODXBoardService extends CommonBoardService {
 
-	private SMFPokerLoginServiceImpl loginServiceImpl = new SMFPokerLoginServiceImpl();
+	private MODXPokerLoginServiceImpl loginServiceImpl = new MODXPokerLoginServiceImpl();
 	
 	private Logger log = Logger.getLogger(this.getClass());
     
@@ -42,7 +42,7 @@ public class MODXBoardService extends CommonBoardService {
 	}	
 	
 	public void init(ServiceContext con) throws SystemException { 
-		log.debug("**** Inside Service Initialized");
+		log.debug("MODXBoardService Initialized");
 		setDaoConfig("modxDAO");
 		super.init(con);	
 	}
