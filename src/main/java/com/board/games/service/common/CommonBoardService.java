@@ -33,7 +33,7 @@ import org.springframework.context.support.FileSystemXmlApplicationContext;
 import com.board.games.dao.GenericDAO;
 import com.board.games.model.PlayerProfile;
 import com.board.games.service.BoardService;
-import com.board.games.service.wallet.WalletAdapter;
+import com.cubeia.firebase.api.action.GameDataAction;
 import com.cubeia.firebase.api.action.local.LoginRequestAction;
 import com.cubeia.firebase.api.action.service.ClientServiceAction;
 import com.cubeia.firebase.api.action.service.ServiceAction;
@@ -44,6 +44,9 @@ import com.cubeia.firebase.io.ProtocolObject;
 import com.cubeia.firebase.io.StyxSerializer;
 import com.cubeia.firebase.io.protocol.ProtocolObjectFactory;
 import com.cubeia.firebase.io.protocol.ServiceTransportPacket;
+import com.cubeia.games.poker.io.protocol.AchievementNotificationPacket;
+import com.cubeia.games.poker.routing.service.io.protocol.PokerProtocolMessage;
+import com.cubeia.games.poker.util.ProtocolFactory;
 import com.google.gson.Gson;
 import com.google.inject.Singleton;
 
@@ -81,6 +84,7 @@ public class CommonBoardService implements BoardService {
 			
 			applicationContext = new FileSystemXmlApplicationContext(boardConfigFile);
 			if (applicationContext == null) {
+				 log.error("Application context of board service cannot be null");
 				throw(new Exception("Application context of board service cannot be null"));
 			}
 		} catch (IOException ioe) {
@@ -140,10 +144,11 @@ public class CommonBoardService implements BoardService {
 		    
 		}		
 		//log.debug("count " + count);
+		// TO DBG: activate trace of detail array below
 		log.debug("sb " + sb.toString());
 		 clientRequest = 	sb.toString();
 		for (byte b : parsed) {
-			log.debug((char)b);
+		//	log.debug((char)b);
 		}		
 		
 		
@@ -165,15 +170,19 @@ public class CommonBoardService implements BoardService {
 		 String clientRequest= requestSt.nextToken(); */
 		log.debug("clientRequest " + clientRequest);
 		 StringTokenizer st=new StringTokenizer(clientRequest,";");
-		 
-		 
-		 
-		 int request =Integer.parseInt(st.nextToken());
+		 String requestData = st.nextToken().trim();
+			 
+		 int request =Integer.parseInt(requestData);
+		 log.debug("received requestData " + request);
 		 String stringDataToClient = null;
 		 PlayerProfile playerProfile = null;
 		 String playerId = null;
 		 String tableId = null;
+		 String achievementId = null;
 		 String avatar_location = "";
+		 boolean bonusHandling = false;
+		 ClientServiceAction dataToClient = null;
+		 
 		 switch (request) {
 
 		 case 2 :
@@ -181,6 +190,7 @@ public class CommonBoardService implements BoardService {
 				log.debug("Retrieving table id for table " + tableId);
 				if (st.hasMoreTokens()) {
 					 playerId =(new String(st.nextToken()));
+					 playerId = playerId.trim();
 						log.debug("Retrieving table id for table " + tableId + " and playerId " + playerId);
 						// need the user id to query player at lobby level to get their avatar if one set
 						playerProfile= getUserProfile(Integer.parseInt(playerId));
@@ -199,22 +209,103 @@ public class CommonBoardService implements BoardService {
 				}
 				log.debug("avatar_location " + avatar_location);
 				stringDataToClient = "2;"+tableId+";"+playerId+";"+avatar_location; 
+				
+		
+				log.debug("sending data to client: " + stringDataToClient);
+				// set up action with data to send to the client
+				
+		//			log.debug("String from json array"+parsedServiceData);
+
+				
+				dataToClient = new ClientServiceAction(action.getPlayerId(), action.getSeq(), stringDataToClient.getBytes("UTF-8"));
+				log.debug("data to client: " + dataToClient);
+								
 				break;
-		default:
+				//FIXME
+		 case 3 :
+			 log.debug("Processing notification");
+			 tableId =(new String(st.nextToken()));
+				log.debug("Retrieving table id for table " + tableId);
+				if (st.hasMoreTokens()) {
+					 playerId =(new String(st.nextToken()));
+					 playerId = playerId.trim();
+						log.debug("Retrieving table id for table " + tableId + " and playerId " + playerId);
+						if (st.hasMoreTokens()) {
+							 achievementId =(new String(st.nextToken()));
+							 achievementId = achievementId.trim();
+								log.debug("Retrieving achievement id for table " + tableId + " and playerId " + playerId + " as #" + achievementId);
+// lookup for achievements image url and it's description to send back to player
+								bonusHandling = true;
+								
+								AchievementNotificationPacket notification = new AchievementNotificationPacket();
+								notification.playerId = Integer.parseInt(playerId);
+								notification.message = "http://localhost/testimg.jpg";
+								
+								
+								ProtocolFactory factory = new ProtocolFactory();
+								GameDataAction gameDataAction = factory.createGameAction(notification, Integer.parseInt(playerId), Integer.parseInt(tableId));
+			//					if (wrapper.broadcast) {
+								log.info("Notify all players at table["+tableId+"] with event ["+notification.message+"] for player["+playerId+"]");
+					//			table.getNotifier().notifyAllPlayers(action);
+				//				} else {
+								log.info("Notify player["+playerId+"] at table["+tableId+"] with event ["+notification.message+"]");
+					//			table.getNotifier().notifyPlayer(playerId, gameDataAction);
+						//		}
+								
+								ByteBuffer notificationData = styxDecoder.pack(notification);
+					//			log.debug("notificationData buffer" + notificationData);
+								PokerProtocolMessage msg = new PokerProtocolMessage(notificationData.array());
+								ByteBuffer msgData = styxDecoder.pack(msg);
+								log.debug("msgData buffer" + msgData);
+								dataToClient = new ClientServiceAction(Integer.parseInt(playerId), action.getSeq(), msgData.array());
+								String achivementUrl = "http://localhost/test.gif";
+								stringDataToClient = "3;"+tableId+";"+playerId+";"+achivementUrl; 
+								
+							//	dataToClient = new ClientServiceAction(Integer.parseInt(playerId), action.getSeq(), stringDataToClient.getBytes("UTF-8"));
+
+						//		log.debug("msgData " + msgData.array());
+						//	log.debug("data to client: " + stringDataToClient);
+								return dataToClient;
+								
+/*
+       StyxSerializer styx = new StyxSerializer(null);
+        PongPacket pongPacket = new PongPacket(identifier);
+        GameDataAction gameDataAction = new GameDataAction(playerId, table.getId());
+        gameDataAction.setData(styx.pack(pongPacket));
+        table.getNotifier().sendToClient(pokerPlayer.getId(), gameDataAction);
+    private void sendToPlayer(BonusEventWrapper wrapper) throws IOException {
+		int playerId = wrapper.playerId;
+		
+		AchievementNotificationPacket notification = new AchievementNotificationPacket();
+		notification.playerId = playerId;
+		notification.message = wrapper.event;
+		
+		ByteBuffer notificationData = serializer.pack(notification);
+		PokerProtocolMessage msg = new PokerProtocolMessage(notificationData.array());
+		ByteBuffer msgData = serializer.pack(msg);
+		
+		ClientServiceAction action = new ClientServiceAction(playerId, 0, msgData.array());
+		log.debug("Send bonus event as client action: "+action);
+		router.getRouter().dispatchToPlayer(playerId, action);
+
+	}
+
+								
+ */
+						}
+						
+				}
+
+
+				break;	
+				default:
 			log.error("Undefined request");
+
 			break;
 			 
 		 }
-			log.debug("sending data to client: " + stringDataToClient);
-		// set up action with data to send to the client
-		
-			log.debug("String from json array"+parsedServiceData);
-
-		ClientServiceAction dataToClient;
-		dataToClient = new ClientServiceAction(action.getPlayerId(), action.getSeq(), stringDataToClient.getBytes("UTF-8"));
-		log.debug("data to client: " + dataToClient);
-		return dataToClient;
-
+			return dataToClient;
+	
 //		ServiceTransportPacket stp = (ServiceTransportPacket) Base64.decodeBase64(action.getData()));
 		
 /*		System.out.println("actiondata decoded =  " + actiondata);	
@@ -348,6 +439,7 @@ case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
 			else
 				applicationContext = new FileSystemXmlApplicationContext(WINDOWS_APP_CTX_CONFIG_FILE);
 		}*/	
+		log.debug("getUserProfile " + userId);
 		if (getApplicationContext() != null) {		
 	       GenericDAO genericDAO = (GenericDAO) getApplicationContext().getBean(daoConfig);
 	       PlayerProfile playerProfile = genericDAO.selectPlayerProfile(userId);
@@ -355,6 +447,8 @@ case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
 		       log.debug("Avatar location " + playerProfile.getAvatar_location() + " Name " + playerProfile.getName());
 		       return playerProfile;
 	       }
+		} else {
+			log.error("getApplicationContext() is null");
 		}
 		return null;       
     }	

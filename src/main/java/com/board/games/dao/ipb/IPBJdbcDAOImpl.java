@@ -114,10 +114,11 @@ and b.member_id = 1
 		else { 	
 			if (!newIPB4Version) {
 				query = "select pp_photo_type, pp_gravatar, pp_main_photo, pp_thumb_photo, pp_member_id,  avatar_location, avatar_type, " + 
-				"name, member_group_id, posts from " + dbPrefix + "profile_portal a " + 
+				"name, member_group_id, posts, pfc.field_6 from " + dbPrefix + "profile_portal a " + 
 				" join " + dbPrefix + "members as b on a.pp_member_id=b.member_id " +
-				" and b.member_id = ?";
-
+				" join " + dbPrefix + "pfields_content pfc on pfc.member_id = b.member_id" + 
+				" where b.member_id = ? " ;
+	
 			} else {// phototype = custom
 				query = "select members_seo_name, pp_cover_photo, member_id, name, " +
 			    " member_group_id, posts, pp_main_photo, pp_thumb_photo, pp_gravatar, " + 
@@ -183,9 +184,12 @@ and b.member_id = 1
 						avatar_type = resultSet.getString("pp_photo_type");
 						String imageUrl = resultSet.getString("pp_main_photo");
 						String gravatarEmail = resultSet.getString("pp_gravatar");
+						String location = resultSet.getString("pfc.field_6");
 						log.debug("avatar_type : " + avatar_type);
 						log.debug("imageUrl : " + imageUrl);
 						log.debug("gravatarEmail : " + gravatarEmail);
+						log.debug("location : " + location);
+						playerProfile.setLocation(location);
 						if (avatar_type != null && !avatar_type.equals("") && avatar_type.equals("gravatar")) {
 //							if (imageUrl != null && !imageUrl.equals("")) {
 								// no need to use avatar api since ipb saves the work by giving it
@@ -221,7 +225,10 @@ and b.member_id = 1
 				
 				String name = resultSet.getString("name");
 				playerProfile.setPosts(resultSet.getInt("posts"));
-				playerProfile.setGroupId(resultSet.getInt("member_group_id"));
+				int groupId = resultSet.getInt("member_group_id");
+				playerProfile.setGroupId(groupId);
+				playerProfile.setVip((groupId == 7) ? true : false);
+				
 				playerProfile.setName(name);
 				
 				playerProfile.setAvatar_location(avatar_location);

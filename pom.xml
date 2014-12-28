@@ -20,8 +20,10 @@
         <jetty.version>8.0.0.M2</jetty.version>
         <org.springframework.version>3.1.2.RELEASE</org.springframework.version>
         
-
+<!--
         <firebase.version>1.10.1-BETA2-SNAPSHOT</firebase.version>
+-->        
+        <firebase.version>1.9.20</firebase.version>
         <styx.version>1.7.0</styx.version>
         <fbguice.version>1.5-SNAPSHOT</fbguice.version>
          <cubeia.network.version>1.6.1</cubeia.network.version>
@@ -59,6 +61,15 @@
         <classifier>jdk15</classifier>
     </dependency>
     
+        <dependency>
+            <groupId>com.cubeia.games</groupId>
+            <artifactId>routing-service-protocol</artifactId>
+        </dependency>
+        
+         <dependency>
+             <groupId>com.cubeia.games</groupId>
+             <artifactId>poker-game</artifactId>
+         </dependency>
 
         <dependency>
             <groupId>com.cubeia.firebase</groupId>
@@ -69,7 +80,7 @@
 		<dependency>
 			<groupId>com.cubeia.games</groupId>
 			<artifactId>poker-protocol</artifactId>
-			<version>1.0.1-SNAPSHOT</version>
+			<version>1.0.0</version>
 			
 		</dependency>     		
         <dependency>

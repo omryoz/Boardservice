@@ -24,8 +24,35 @@ public class PlayerProfile {
 	private String name="";
 	private int posts = 0;
 	private int groupId = 0;
+	private boolean isPremiumLevel1 = false;
+	private boolean isPremiumLevel2 = false;
+	private boolean isVip = false;
+	private String location;
 	
-	
+	public String getLocation() {
+		return location;
+	}
+	public void setLocation(String location) {
+		this.location = location;
+	}
+	public boolean isVip() {
+		return isVip;
+	}
+	public void setVip(boolean isVip) {
+		this.isVip = isVip;
+	}
+	public boolean isPremiumLevel1() {
+		return isPremiumLevel1;
+	}
+	public void setPremiumLevel1(boolean isPremiumLevel1) {
+		this.isPremiumLevel1 = isPremiumLevel1;
+	}
+	public boolean isPremiumLevel2() {
+		return isPremiumLevel2;
+	}
+	public void setPremiumLevel2(boolean isPremiumLevel2) {
+		this.isPremiumLevel2 = isPremiumLevel2;
+	}
 	public int getPosts() {
 		return posts;
 	}

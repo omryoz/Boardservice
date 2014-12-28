@@ -19,10 +19,7 @@ package com.board.games.handler.ipb;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -105,11 +102,32 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 		ServerConfig serverCfg=null;*/
 			// Must be the very first call
 			initialize();			
-
-		LoginResponseAction response = null;
+			boolean userHasAcceptedAgeclause = false;
+			log.debug("Data login " + req.getData());
+			int count = 0;
+			int idx = 0;
+			int ref =0;
+			StringBuffer sb = new StringBuffer();
+			for (byte b : req.getData()) {
+				idx++;
+			    log.debug((char)b);
+			    char val = (char)b;
+			//	if (idx >7 )
+			    sb.append(val);
+			    
+			}		
+			//log.debug("count " + count);
+			// TO DBG: activate trace of detail array below
+			log.debug("sb " + sb.toString());
+			 String logindataRequest = 	sb.toString();	
+			 log.debug("logindataRequest" + logindataRequest);
+			 if (logindataRequest.toUpperCase().equals("AGEVERIFICATIONDONE")) {
+				 userHasAcceptedAgeclause = true;
+			 }
+			 LoginResponseAction response = null;
 		try {
 			log.debug("Performing authentication on " + req.getUser());
-			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg());
+			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause);
 			if (!userIdStr.equals("")) {
 				
 				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
@@ -177,8 +195,12 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 		return "User not found or registered but at least 1 post is required to play.";
 	}
 
-	private String authenticate(String user, String password, ServerConfig serverConfig) throws Exception {
+	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge) throws Exception {
 		try {
+/*			
+ 			if (user.toUpperCase().startsWith("SYSFP97")) {
+				return "123456789";
+			}*/
 			int idx = user.indexOf("_");
 			if (idx != -1) {
 				// let bots through
@@ -188,7 +210,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount());
+						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), (serverConfig.getInitialAmount().multiply(new BigDecimal(20))),true);
 						return String.valueOf(userId);
 					} else {
 						return idStr;
@@ -214,7 +236,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			// Result set get the result of the SQL query
 			// SELECT * FROM ipb3_members WHERE members_seo_name = ''
 			String data = newIPB4Version ? "core_members " : "members ";
-			String selectSQL = "select members_seo_name,  member_id, name, "
+			String selectSQL = "select members_seo_name,  member_id, name, member_group_id, "
 					+ " members_pass_hash,  members_pass_salt,  "
 					+ " title, posts from " + dbPrefix + data
 					+ " where name = " + "\'" + user + "\'";
@@ -227,6 +249,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			String members_pass_hash = null;
 			int member_id = 0;
 			int posts = 0;
+			int rank = 0;
 			boolean authenticated = false;
 			if (resultSet != null && resultSet.next()) {
 				String members_seo_name = resultSet
@@ -243,10 +266,11 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 				//		.getString("members_display_name");
 				String title = resultSet.getString("title");
 				posts = resultSet.getInt("posts");
+				rank = posts = resultSet.getInt("member_group_id");
 				log.debug("User: " + user + " Password " + "**********");
 				
 				String escapePwdHTML = StringEscapeUtils.escapeHtml(password);
-				log.debug("escapeHTML = " + escapePwdHTML);
+				//log.debug("escapeHTML = " + escapePwdHTML);
 				
 				if (!newIPB4Version) {
 					String pwdMD5 = HashHelper.getMD5(password);
@@ -288,7 +312,12 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount());
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge);
+						
+						if (userId < 0 ) {
+							// user did not accept age clauses
+							return "-5";
+						}
 						log.debug("assigned new id as #" + String.valueOf(userId));
 						return String.valueOf(userId);
 /*						if (posts >= 1) {

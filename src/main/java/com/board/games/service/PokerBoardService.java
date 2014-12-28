@@ -107,6 +107,7 @@ public class PokerBoardService implements LoginLocator, Service, PokerBoardServi
 		ClientServiceAction dataToClient = board.process(e);
 		if (dataToClient != null) {
 		// dispatch data
+			log.debug("Dispaching data to client");
 		router.dispatchToPlayer(e.getPlayerId(), dataToClient);
 		} else {
 			log.debug("onAction : dataToclient is null");

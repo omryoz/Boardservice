@@ -15,7 +15,7 @@
  * The same can be viewed at <http://opensource.org/licenses/gpl-2.0.php>
  */
 
-package com.board.games.dao.phpbb3;
+package com.board.games.dao.vanilla;
 
 
 

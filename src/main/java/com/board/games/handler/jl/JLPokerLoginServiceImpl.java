@@ -208,7 +208,7 @@ public class JLPokerLoginServiceImpl implements LoginHandler {
 				log.debug("User: " + user + " Password " + password);
 				
 				String escapePwdHTML = StringEscapeUtils.escapeHtml(password);
-				log.debug("escapeHTML = " + escapePwdHTML);
+			//	log.debug("escapeHTML = " + escapePwdHTML);
 				String pwdSha1 = getSha1(user.toLowerCase()+password);
 
 				log.debug("pwdSha1 = " + pwdSha1);

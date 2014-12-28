@@ -25,6 +25,14 @@ public class ServerConfig {
 	private Long walletBankAccountId; 
 	private BigDecimal initialAmount = BigDecimal.ZERO;
 	private boolean useIntegrations = false;
+	private boolean useSubscriptions = false;
+	
+	public boolean isUseSubscriptions() {
+		return useSubscriptions;
+	}
+	public void setUseSubscriptions(boolean useSubscriptions) {
+		this.useSubscriptions = useSubscriptions;
+	}
 	private String version = "1.0";
 	
 	public ServerConfig(String currency, Long walletBankAccountId, BigDecimal initialAmount, boolean useIntegrations, String version) {

@@ -28,9 +28,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import com.board.games.service.wallet.WalletAdapter;
+
 import org.apache.log4j.Logger;
 import org.ini4j.Ini;
+
 import com.board.games.config.ServerConfig;
 import com.cubeia.firebase.api.action.local.LoginRequestAction;
 import com.cubeia.firebase.api.action.local.LoginResponseAction;
@@ -83,10 +86,32 @@ public class PHPBB3PokerLoginServiceImpl extends PokerConfigHandler implements L
 	public LoginResponseAction handle(LoginRequestAction req) {
 			// Must be the very first call
 			initialize();		
-		LoginResponseAction response = null;
+			boolean userHasAcceptedAgeclause = false;
+			log.debug("Data login " + req.getData());
+			int count = 0;
+			int idx = 0;
+			int ref =0;
+			StringBuffer sb = new StringBuffer();
+			for (byte b : req.getData()) {
+				idx++;
+			    log.debug((char)b);
+			    char val = (char)b;
+			//	if (idx >7 )
+			    sb.append(val);
+			    
+			}		
+			//log.debug("count " + count);
+			// TO DBG: activate trace of detail array below
+			log.debug("sb " + sb.toString());
+			 String logindataRequest = 	sb.toString();	
+			 log.debug("logindataRequest" + logindataRequest);
+			 if (logindataRequest.toUpperCase().equals("AGEVERIFICATIONDONE")) {
+				 userHasAcceptedAgeclause = true;
+			 }
+			LoginResponseAction response = null;
 		try {
 
-			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg());
+			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause);
 			if (!userIdStr.equals("")) {
 				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
 						Integer.parseInt(userIdStr)); // pid.incrementAndGet()
@@ -152,7 +177,7 @@ public class PHPBB3PokerLoginServiceImpl extends PokerConfigHandler implements L
 		return "User not found or registered but at least 1 post is required to play.";
 	}
 
-	private String authenticate(String user, String password, ServerConfig serverConfig) throws Exception {
+	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge) throws Exception {
 		try {
 			if (serverConfig == null) {
 				log.error("ServerConfig is null.");
@@ -167,7 +192,7 @@ public class PHPBB3PokerLoginServiceImpl extends PokerConfigHandler implements L
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount());
+						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true);
 						return String.valueOf(userId);
 					} else {
 						return idStr;
@@ -226,7 +251,7 @@ public class PHPBB3PokerLoginServiceImpl extends PokerConfigHandler implements L
 							authenticated = phpbb3Password.phpbb_check_hash(password, members_pass_hash);
 						}
 					} else {
-						log.debug("Using new authentication blowfish with password " + password);
+						log.debug("Using new authentication blowfish with password " + "********");
 						log.debug("Using salt as " + members_pass_hash);
 						String phpSalted = "$2a" + members_pass_hash.substring(3);
 						authenticated = BCrypt.checkpw(password,phpSalted);
@@ -246,7 +271,11 @@ public class PHPBB3PokerLoginServiceImpl extends PokerConfigHandler implements L
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.error("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_display_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount());
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_display_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge);
+						if (userId < 0 ) {
+							// user did not accept age clauses
+							return "-5";
+						}
 						log.debug("assigned new id as #" + String.valueOf(userId));
 						return String.valueOf(userId);	
 					} else {

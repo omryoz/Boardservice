@@ -32,6 +32,7 @@ import com.board.games.service.modx.MODXBoardService;
 import com.board.games.service.phpbb3.PHPBB3BoardService;
 import com.board.games.service.smf.SMFBoardService;
 import com.board.games.service.vanilla.VanillaBoardService;
+import com.board.games.service.wolflab.WBBBoardService;
 import com.board.games.service.xbtit.XbtitBoardService;
 import com.board.games.service.xf.XFBoardService;
 import com.google.inject.AbstractModule;
@@ -77,6 +78,9 @@ public class BoardModule extends AbstractModule {
 			} else if (boardType.equals("Dolphin") || boardType.equals("10")) {
 				log.debug("Inside configure : Dolphin found");
 				bind(BoardService.class).to(DolphinBoardService.class);
+			} else if (boardType.equals("Wolflab") || boardType.equals("11")) {
+				log.debug("Inside configure : Wolflab found");
+				bind(BoardService.class).to(WBBBoardService.class);
 			} else {
 				log.debug("Inside configure : *** NO BOARD TYPE *** found");
 				bind(BoardService.class).to(GenericBoardService.class);
