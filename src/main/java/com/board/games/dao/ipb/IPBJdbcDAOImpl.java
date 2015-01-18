@@ -121,7 +121,7 @@ and b.member_id = 1
 	
 			} else {// phototype = custom
 				query = "select members_seo_name, pp_cover_photo, member_id, name, " +
-			    " member_group_id, posts, pp_main_photo, pp_thumb_photo, pp_gravatar, " + 
+			    " member_group_id, member_posts, pp_main_photo, pp_thumb_photo, pp_gravatar, " + 
 				" pp_photo_type, tc_photo, fb_photo, fb_photo_thumb " + 
 				" from " + dbPrefix + "core_members cm " +
 				" where cm.member_id = ?";				
@@ -178,6 +178,8 @@ and b.member_id = 1
 					} else if (avatar_type != null && avatar_type.equals("url")) {
 						// nothing to do
 					}
+					playerProfile.setPosts(resultSet.getInt("posts"));
+					
 				} else {
 					if (!newIPB4Version) {
 						playerProfile.setId(resultSet.getInt("pp_member_id"));
@@ -212,11 +214,15 @@ and b.member_id = 1
 							} else {
 								avatar_location = siteUrl + "/uploads" + "/" + "novatar.png";
 							}
-						}						
+						}	
+						playerProfile.setPosts(resultSet.getInt("posts"));
+						
 					} else {
 						playerProfile.setId(resultSet.getInt("member_id"));
 						String imageUrl = resultSet.getString("pp_main_photo");
 						avatar_location = imageUrl;
+						playerProfile.setPosts(resultSet.getInt("member_posts"));
+						
 					}
 				}
 
@@ -224,7 +230,6 @@ and b.member_id = 1
 				log.debug("url " + avatar_location);
 				
 				String name = resultSet.getString("name");
-				playerProfile.setPosts(resultSet.getInt("posts"));
 				int groupId = resultSet.getInt("member_group_id");
 				playerProfile.setGroupId(groupId);
 				playerProfile.setVip((groupId == 7) ? true : false);

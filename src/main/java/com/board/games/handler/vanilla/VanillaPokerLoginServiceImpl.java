@@ -54,6 +54,7 @@ public class VanillaPokerLoginServiceImpl implements LoginHandler {
 	private String connectionStr = "";
 	private String jdbcDriverClassName = "";
 	private String dbPrefix = "";
+	private boolean needAgeAgreement = false;
 
 	@Override
 	public LoginResponseAction handle(LoginRequestAction req) {
@@ -72,6 +73,11 @@ public class VanillaPokerLoginServiceImpl implements LoginHandler {
 			connectionStr = "jdbc" + ":" + jdbcDriver + "://" + connectionUrl
 					+ "/" + database + "?user=" + user + "&password="
 					+ password;
+			String forceAgeAgreement = ini.get("JDBCConfig", "forceAgeAgreement");
+			if (!forceAgeAgreement.equals("") && "Y".equals(forceAgeAgreement.toUpperCase())) {
+				needAgeAgreement = true;
+			}
+			
 		} catch (IOException ioe) {
 			log.error("Exception in init " + ioe.toString());
 		} catch (Exception e) {

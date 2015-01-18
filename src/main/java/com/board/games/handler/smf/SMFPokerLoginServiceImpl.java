@@ -53,6 +53,7 @@ public class SMFPokerLoginServiceImpl implements LoginHandler {
 	private String connectionStr = "";
 	private String jdbcDriverClassName = "";
 	private String dbPrefix = "";
+	private boolean needAgeAgreement = false;
 
 	@Override
 	public LoginResponseAction handle(LoginRequestAction req) {
@@ -73,6 +74,11 @@ public class SMFPokerLoginServiceImpl implements LoginHandler {
 					+ password;
 			log.debug("user " + user);
 			log.debug("connectionStr " + connectionStr);
+			String forceAgeAgreement = ini.get("JDBCConfig", "forceAgeAgreement");
+			if (!forceAgeAgreement.equals("") && "Y".equals(forceAgeAgreement.toUpperCase())) {
+				needAgeAgreement = true;
+			}
+			
 		} catch (IOException ioe) {
 			log.error("Exception in init " + ioe.toString());
 		} catch (Exception e) {

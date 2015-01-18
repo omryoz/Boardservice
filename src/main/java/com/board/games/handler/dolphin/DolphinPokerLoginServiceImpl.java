@@ -53,6 +53,7 @@ public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements 
 	private String connectionStr = "";
 	private String jdbcDriverClassName = "";
 	private String dbPrefix = "";
+	private boolean needAgeAgreement = false;
 
 	
 	public static void main(String[] a) {
@@ -85,6 +86,10 @@ public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements 
 			connectionStr = "jdbc" + ":" + jdbcDriver + "://" + connectionUrl
 					+ "/" + database + "?user=" + user + "&password="
 					+ password;
+			String forceAgeAgreement = ini.get("JDBCConfig", "forceAgeAgreement");
+			if (!forceAgeAgreement.equals("") && "Y".equals(forceAgeAgreement.toUpperCase())) {
+				needAgeAgreement = true;
+			}
 					
 		} catch (IOException ioe) {
 			log.error("Exception in initialize " + ioe.toString());
@@ -203,7 +208,7 @@ public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements 
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true);
+						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true,false);
 						return String.valueOf(userId);
 					} else {
 						return idStr;
@@ -276,7 +281,7 @@ public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements 
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.error("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_display_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge);
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement);
 						if (userId < 0 ) {
 							// user did not accept age clauses
 							return "-5";

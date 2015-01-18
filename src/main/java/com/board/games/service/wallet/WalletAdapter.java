@@ -66,14 +66,16 @@ public class WalletAdapter {
 		}
 		return -1;
 	}
-	public Long checkCreateNewUser(String externalId, String name, Long operatorId, String currency, Long walletBankAccountId, BigDecimal initialAmount, boolean hasClauseAgreed) {
+	public Long checkCreateNewUser(String externalId, String name, Long operatorId, String currency, Long walletBankAccountId, BigDecimal initialAmount, boolean hasClauseAgreed, boolean needAgeAgreement) {
 		log.debug("Check if user exists - extId["+externalId+"] name["+name+"] opId["+operatorId+"]");
 		User user = userService.getUserByExternalId(externalId, operatorId);
 		
 		if (user == null) {
-			if (!hasClauseAgreed) {
-				log.debug("User does not exist and has not pass age verification (-9998) .");
-				return new Long(-9998);
+			if (needAgeAgreement) {
+				if (!hasClauseAgreed) {
+					log.debug("User does not exist and has not pass age verification (-9998) .");
+					return new Long(-9998);
+				}
 			}
 			log.debug("Migrating user for the first time: extId["+externalId+"] name["+name+"] opId["+operatorId+"]");
 			// Username has to be unique for every operator id and the only unique constraint we 
@@ -95,14 +97,16 @@ public class WalletAdapter {
 			createMainAccountForUser(user.getUserId(), name, currency, walletBankAccountId, initialAmount);
 		} else { // do not exist or clause denied
 			String value = user.getAttributes().get("AGE_ACCEPTANCE_REQUIRED_DONE");
-			log.debug("User found but has not pass age verification (-9999).");
 			if (value == null || (value != null && !value.equals("1"))) {
 				if (hasClauseAgreed) {
 					user.getAttributes().put("AGE_ACCEPTANCE_REQUIRED_DONE", "1");
 					userService.updateUser(user);	
 					return user.getUserId();
 				}
-				return new Long(-9999);
+				if (needAgeAgreement) {
+					log.debug("User found but has not pass age verification (-9999).");
+					return new Long(-9999);
+				}
 			}
 			log.debug("User found and pass age check. Will not create new.");
 		}
