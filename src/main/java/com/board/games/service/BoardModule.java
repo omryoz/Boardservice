@@ -29,6 +29,8 @@ import com.board.games.service.generic.GenericBoardService;
 import com.board.games.service.ipb.IPBBoardService;
 import com.board.games.service.jl.JLBoardService;
 import com.board.games.service.modx.MODXBoardService;
+import com.board.games.service.mybb.MyBBBoardService;
+import com.board.games.service.nodebb.NodeBBBoardService;
 import com.board.games.service.phpbb3.PHPBB3BoardService;
 import com.board.games.service.smf.SMFBoardService;
 import com.board.games.service.vanilla.VanillaBoardService;
@@ -81,6 +83,12 @@ public class BoardModule extends AbstractModule {
 			} else if (boardType.equals("Wolflab") || boardType.equals("11")) {
 				log.debug("Inside configure : Wolflab found");
 				bind(BoardService.class).to(WBBBoardService.class);
+			} else if (boardType.equals("MyBB") || boardType.equals("12")) {
+				log.debug("Inside configure : MyBB found");
+				bind(BoardService.class).to(MyBBBoardService.class);
+			} else if (boardType.equals("NodeBB") || boardType.equals("14")) {
+				log.debug("Inside configure : NodeBB found");
+				bind(BoardService.class).to(NodeBBBoardService.class);
 			} else {
 				log.debug("Inside configure : *** NO BOARD TYPE *** found");
 				bind(BoardService.class).to(GenericBoardService.class);
