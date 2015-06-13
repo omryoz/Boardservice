@@ -61,6 +61,7 @@ public class WBBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 	private String jdbcDriverClassName = "";
 	private String dbPrefix = "";
 	private boolean needAgeAgreement = false;
+	 private int authTypeId = 1;
 	
 	protected void initialize() {
 		super.initialize();
@@ -116,7 +117,7 @@ public class WBBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			LoginResponseAction response = null;
 		try {
 
-			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause);
+			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause,authTypeId);
 			if (!userIdStr.equals("")) {
 				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
 						Integer.parseInt(userIdStr)); // pid.incrementAndGet()
@@ -181,8 +182,9 @@ public class WBBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 	protected String getNotFoundErrorMessage() {
 		return "User not found or registered but at least 1 post is required to play.";
 	}
+	
 
-	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge) throws Exception {
+	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge, int authTypeId) throws Exception {
 		try {
 			if (serverConfig == null) {
 				log.error("ServerConfig is null.");
@@ -197,7 +199,7 @@ public class WBBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true,false);
+						Long userId = walletAdapter.checkCreateNewUser(idStr, user,  "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true,false,0);
 						return String.valueOf(userId);
 					} else {
 						return idStr;
@@ -267,7 +269,7 @@ public class WBBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.error("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement);
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name,  "UNUSED", new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement,authTypeId);
 						if (userId < 0 ) {
 							// user did not accept age clauses
 							return "-5";

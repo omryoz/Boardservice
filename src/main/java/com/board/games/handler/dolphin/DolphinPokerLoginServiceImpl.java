@@ -54,7 +54,7 @@ public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements 
 	private String jdbcDriverClassName = "";
 	private String dbPrefix = "";
 	private boolean needAgeAgreement = false;
-
+    private int authTypeId = 1;
 	
 	public static void main(String[] a) {
 		
@@ -208,7 +208,7 @@ public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements 
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true,false);
+						Long userId = walletAdapter.checkCreateNewUser(idStr, user,  "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true,false,0);
 						return String.valueOf(userId);
 					} else {
 						return idStr;
@@ -281,7 +281,7 @@ public class DolphinPokerLoginServiceImpl extends PokerConfigHandler implements 
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.error("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement);
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, "UNUSED",  new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement,authTypeId);
 						if (userId < 0 ) {
 							// user did not accept age clauses
 							return "-5";

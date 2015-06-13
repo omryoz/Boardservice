@@ -127,15 +127,27 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			// Must be the very first call
 			initialize();			
 			boolean userHasAcceptedAgeclause = false;
-			boolean useFacebookAuthentication = false;
-			log.debug("Data login " + req.getData());
+		//	boolean useFacebookAuthentication = false;
+			//log.debug("Data login " + req.getData());
+			
+			boolean isBot = false;
+			String loginName = req.getUser();
+			int idxb = loginName.indexOf("_");
+			if (idxb != -1) {
+				// let bots through
+				String idStr = loginName.substring(idxb+1);
+				if (loginName.toUpperCase().startsWith("BOT")) {
+					isBot = true;
+				}
+			}
+			
 			int count = 0;
 			int idx = 0;
 			int ref =0;
 			StringBuffer sb = new StringBuffer();
 			for (byte b : req.getData()) {
 				idx++;
-			    log.debug((char)b);
+		//	    log.debug((char)b);
 			    char val = (char)b;
 			//	if (idx >7 )
 			    sb.append(val);
@@ -148,25 +160,50 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 				 
 			 log.debug("datarequest " + logindataRequest);
 			 StringTokenizer st=new StringTokenizer(logindataRequest,";");
-			 String ageClause = st.nextToken().trim();
-			 log.debug("ageClause " + ageClause); 
-			 if (ageClause.toUpperCase().equals("AGEVERIFICATIONDONE")) {
-				 userHasAcceptedAgeclause = true;
-			 }
-			 log.debug("User has accepted clause = " + (userHasAcceptedAgeclause? "yes" : "no"));
-				 int fbFlag =(new Integer(st.nextToken()));
-				 log.debug("authId " + (fbFlag==5?"use fb":"no fb")); 
-			 if (fbFlag==5) {
-				 // overwrite default authTypeId
-				 authTypeId = 5; //force email with fb
-				 log.debug("authTypeId " + authTypeId);
+			 String socialNetworkId = "";
+			 String socialAvatar = "";
+			 if (!isBot) {
+				 String ageClause = st.nextToken().trim();
+				 log.debug("ageClause " + ageClause); 
+				 if (ageClause.toUpperCase().equals("AGEVERIFICATIONDONE")) {
+					 userHasAcceptedAgeclause = true;
+				 }
+				 log.debug("User has accepted clause = " + (userHasAcceptedAgeclause? "yes" : "no"));
+				 int snFlag =new Integer(st.nextToken());
+				 log.debug("authId " + (snFlag==5 || snFlag== 6?"use sn":"no sn"));
+				  socialNetworkId = (String)st.nextToken();
+				 log.debug("socialNetworkId " + socialNetworkId);
+				 socialAvatar =new String(st.nextToken());
+				 log.debug("socialAvatar " + socialAvatar);
+				 if (snFlag==5) {
+					 // overwrite default authTypeId
+					 authTypeId = 5; //force email with fb
+					 log.debug("authTypeId " + authTypeId);
+				 } else if (snFlag==6) {
+						 // overwrite default authTypeId
+					 authTypeId = 6; //force email with google plus
+					 log.debug("authTypeId " + authTypeId);
+				 } else {
+					 authTypeId = 1;
+				 }
 			 } else {
+				 socialNetworkId ="999999";
+				 socialAvatar = "";
+				 userHasAcceptedAgeclause = true;
 				 authTypeId = 1;
 			 }
 			 LoginResponseAction response = null;
 		try {
 			log.debug("Performing authentication on " + req.getUser());
-			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause,authTypeId);
+			String userIdStr = null;
+			if (authTypeId == 5 || authTypeId == 6) {
+				log.debug("*** Social Network authentication ***");
+				userIdStr = authenticateSocialNetwork(req.getUser(), socialNetworkId, socialAvatar, getServerCfg(),userHasAcceptedAgeclause,authTypeId);
+			}
+			else {
+				log.debug("*** Forum authentication ***");
+				userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause,authTypeId);
+			}
 			if (!userIdStr.equals("")) {
 				
 				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
@@ -251,7 +288,42 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 		return "User not found or registered but at least 1 post is required to play.";
 	}
 
-	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge, int authTypeParam) throws Exception {
+	private String authenticateSocialNetwork(String user, String uId, String socialAvatar, ServerConfig serverConfig, boolean checkAge, int authTypeId ) throws Exception {
+		int member_id = 0;
+		if (serverConfig != null) {	
+			if (serverConfig.isUseIntegrations()) {
+				
+				WalletAdapter walletAdapter = new WalletAdapter();
+				log.debug("Calling createWalletAccount");
+				Long userId = walletAdapter.checkCreateNewUser(uId, user,  socialAvatar, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement, authTypeId);
+				
+				if (userId < 0 ) {
+					log.debug("Player did did not accept age clause");
+					// user did not accept age clauses
+					return "-5";
+				}
+				log.debug("assigned new id as #" + String.valueOf(userId));
+				return String.valueOf(userId);
+	/*						if (posts >= 1) {
+						return String.valueOf(member_id);
+					} else {
+						log.error("Required number of posts not met, denied login");
+						return "-2";
+					}
+	*/
+			} else {
+				return String.valueOf(uId);
+			}
+		
+		} else {
+			log.error("ServerConfig is null.");
+		}						
+		return "-3";
+	
+	}
+	
+	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge, int authTypeId) throws Exception {
+		boolean authenticated = false;
 		try {
 /*			
  			if (user.toUpperCase().startsWith("SYSFP97")) {
@@ -266,7 +338,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), (serverConfig.getInitialAmount().multiply(new BigDecimal(20))),true,false);
+						Long userId = walletAdapter.checkCreateNewUser(idStr, user, "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), (serverConfig.getInitialAmount().multiply(new BigDecimal(20))),true,false,0);
 						return String.valueOf(userId);
 					} else {
 						return idStr;
@@ -274,7 +346,6 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 
 				}
 			}
-			log.debug("authTypeParam " + authTypeParam);
 			if (user.toUpperCase().startsWith("GUESTXDEMO")) {
 				return String.valueOf(pid.incrementAndGet()+500000);
 			}
@@ -299,7 +370,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 					+ " members_pass_hash,  members_pass_salt,  "
 					+ " member_title, member_posts from " + dbPrefix + data
 					+ " where " 
-					+ (authTypeParam==10 ? " email = " : " name = ") + "\'" + user + "\'";
+					+ " name = " + "\'" + user + "\'";
 			} else {
 				selectSQL = "select members_seo_name,  member_id, name, member_group_id, "
 						+ " members_pass_hash,  members_pass_salt,  "
@@ -315,7 +386,6 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			int member_id = 0;
 			int posts = 0;
 			int rank = 0;
-			boolean authenticated = false;
 			if (resultSet != null && resultSet.next()) {
 				String members_seo_name = resultSet
 						.getString("members_seo_name");
@@ -364,12 +434,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 						}
 					}
 				} else {
-					if (authTypeParam!=5) {
-						authenticated = BCrypt.checkpw(escapePwdHTML,members_pass_hash);
-					} else {
-						log.debug("Authenticating facebook account");
-						authenticated = true;
-					}
+					authenticated = BCrypt.checkpw(escapePwdHTML,members_pass_hash);
 										
 				}
 				log.debug("members_pass_hash = " + members_pass_hash);
@@ -382,7 +447,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement);
+						Long userId = walletAdapter.checkCreateNewUser(String.valueOf(member_id), members_seo_name,  "UNUSED", new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement,authTypeId);
 						
 						if (userId < 0 ) {
 							log.debug("Player did did not accept age clause");
