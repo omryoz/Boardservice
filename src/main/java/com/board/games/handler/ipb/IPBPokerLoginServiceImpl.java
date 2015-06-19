@@ -119,11 +119,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 		// At this point, we should get the user name and password
 		// from the request and verify them, but for this example
 		// we'll just assign a dynamic player ID and grant the login
-/*		String currency = "USD";
-		String walletBankAccountId = "2";
-		String initialAmount = "1000";
-		String useIntegrations = "Y";
-		ServerConfig serverCfg=null;*/
+
 			// Must be the very first call
 			initialize();			
 			boolean userHasAcceptedAgeclause = false;
@@ -198,7 +194,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			String userIdStr = null;
 			if (authTypeId == 5 || authTypeId == 6) {
 				log.debug("*** Social Network authentication ***");
-				userIdStr = authenticateSocialNetwork(req.getUser(), socialNetworkId, socialAvatar, getServerCfg(),userHasAcceptedAgeclause,authTypeId);
+				userIdStr = authenticateSocialNetwork(req.getUser(), socialNetworkId, socialAvatar, getServerCfg(),userHasAcceptedAgeclause,authTypeId, needAgeAgreement);
 			}
 			else {
 				log.debug("*** Forum authentication ***");
@@ -288,40 +284,7 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 		return "User not found or registered but at least 1 post is required to play.";
 	}
 
-	private String authenticateSocialNetwork(String user, String uId, String socialAvatar, ServerConfig serverConfig, boolean checkAge, int authTypeId ) throws Exception {
-		int member_id = 0;
-		if (serverConfig != null) {	
-			if (serverConfig.isUseIntegrations()) {
-				
-				WalletAdapter walletAdapter = new WalletAdapter();
-				log.debug("Calling createWalletAccount");
-				Long userId = walletAdapter.checkCreateNewUser(uId, user,  socialAvatar, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement, authTypeId);
-				
-				if (userId < 0 ) {
-					log.debug("Player did did not accept age clause");
-					// user did not accept age clauses
-					return "-5";
-				}
-				log.debug("assigned new id as #" + String.valueOf(userId));
-				return String.valueOf(userId);
-	/*						if (posts >= 1) {
-						return String.valueOf(member_id);
-					} else {
-						log.error("Required number of posts not met, denied login");
-						return "-2";
-					}
-	*/
-			} else {
-				return String.valueOf(uId);
-			}
-		
-		} else {
-			log.error("ServerConfig is null.");
-		}						
-		return "-3";
-	
-	}
-	
+
 	private String authenticate(String user, String password, ServerConfig serverConfig, boolean checkAge, int authTypeId) throws Exception {
 		boolean authenticated = false;
 		try {

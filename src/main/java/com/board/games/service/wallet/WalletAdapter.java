@@ -91,12 +91,15 @@ public class WalletAdapter {
 				// Always update attributes
 				user.getAttributes().put(EXTERNAL_USERNAME_ATTRIBUTE, name);
 				//FIXME: needs to differenicate different social network
+				log.debug("Setting social network type " + String.valueOf(authTypeId) );
 				user.getAttributes().put(CURRENT_SOCIAL_NETWORK_TYPE, String.valueOf(authTypeId));
 				switch (authTypeId) {
 					case 5:
+						log.debug("Setting fb social network avatar " + socialAvatar );
 						user.getAttributes().put(FB_AVATAR_URL, socialAvatar);
 						break;
 					case 6: 
+						log.debug("Setting g+ social network avatar " + socialAvatar );
 						user.getAttributes().put(GOOGLEPLUS_AVATAR_URL, socialAvatar);
 						break;
 					default:
@@ -105,8 +108,10 @@ public class WalletAdapter {
 				}
 				//TODO ChangeUserStatusRequest
 				// Verify age validation if fails, return error code
-				userService.updateUser(user);			
+				userService.updateUser(user);	
+				log.debug("Creating main account");
 				createMainAccountForUser(user.getUserId(), name, currency, walletBankAccountId, initialAmount);
+				return user.getUserId();
 			} 
 			else{
 				log.error("Create user failed (null)");
@@ -125,6 +130,27 @@ public class WalletAdapter {
 				}
 			}
 			log.debug("User found and pass age check. Will not create new.");
+			// Always update user authenticate
+			// Always update attributes since user may have change avatar/name or user simply back and forth forum and social network
+			// so previously was 1 , now must be updated
+			log.debug("Setting social network name " + name );
+			user.getAttributes().put(EXTERNAL_USERNAME_ATTRIBUTE, name);
+			//FIXME: needs to differenicate different social network
+			log.debug("Setting social network type " + String.valueOf(authTypeId) );
+			user.getAttributes().put(CURRENT_SOCIAL_NETWORK_TYPE, String.valueOf(authTypeId));
+			switch (authTypeId) {
+				case 5:
+					log.debug("Setting fb social network avatar " + socialAvatar );
+					user.getAttributes().put(FB_AVATAR_URL, socialAvatar);
+					break;
+				case 6: 
+					log.debug("Setting g+ social network avatar " + socialAvatar );
+					user.getAttributes().put(GOOGLEPLUS_AVATAR_URL, socialAvatar);
+					break;
+				default:
+					break;
+				
+			}			
 			return user.getUserId();
 		}
 		
@@ -132,7 +158,7 @@ public class WalletAdapter {
 		
 	}
 	private void createMainAccountForUser(Long userId, String name, String currency, Long walletBankAccountId, BigDecimal initialAmount) {
-		log.debug("Will create new account for user " + userId);
+		log.warn("Will create new account for user " + userId + " with amount as " + initialAmount);
 		CreateAccountRequest req = createAccountRequest(userId, name, currency);
 		CreateAccountResult result = walletService.createAccount(req);
 		log.debug("Play money account for player " + userId + " created with ID: " + result.getAccountId());

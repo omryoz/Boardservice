@@ -21,6 +21,7 @@ import org.apache.log4j.Logger;
 import org.ini4j.Ini;
 
 import com.board.games.config.ServerConfig;
+import com.board.games.service.wallet.WalletAdapter;
 
 public class PokerConfigHandler {
 	private ServerConfig serverCfg=null;
@@ -40,6 +41,9 @@ public class PokerConfigHandler {
 			initialAmount = ini.get("JDBCConfig", "initialAmount");
 			useIntegrations = ini.get("JDBCConfig", "useIntegrations");
 			version = ini.get("JDBCConfig", "version");	
+			log.warn("Initial amount : " + initialAmount);
+			log.warn("UseIntegrations : " + useIntegrations);
+			log.warn("currency : " + currency);
 			serverCfg = new ServerConfig(currency, new Long(walletBankAccountId), new BigDecimal(initialAmount), useIntegrations.equals("Y")? true:false,version);
 		} catch (IOException ioe) {
 			log.error("Exception in init " + ioe.toString());
@@ -54,7 +58,37 @@ public class PokerConfigHandler {
 		return serverCfg;
 	}
 
-/*	public void setServerCfg(ServerConfig serverCfg) {
-		this.serverCfg = serverCfg;
-	}*/
+	protected String authenticateSocialNetwork(String user, String uId, String socialAvatar, ServerConfig serverConfig, boolean checkAge, int authTypeId, boolean needAgeAgreement ) throws Exception {
+		if (serverConfig != null) {	
+			if (serverConfig.isUseIntegrations()) {
+				
+				WalletAdapter walletAdapter = new WalletAdapter();
+				log.debug("Calling createWalletAccount");
+				Long userId = walletAdapter.checkCreateNewUser(uId, user,  socialAvatar, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement, authTypeId);
+				
+				if (userId < 0 ) {
+					log.debug("Player did did not accept age clause");
+					// user did not accept age clauses
+					return "-5";
+				}
+				log.debug("assigned new id as #" + String.valueOf(userId));
+				return String.valueOf(userId);
+	/*						if (posts >= 1) {
+						return String.valueOf(member_id);
+					} else {
+						log.error("Required number of posts not met, denied login");
+						return "-2";
+					}
+	*/
+			} else {
+				return String.valueOf(uId);
+			}
+		
+		} else {
+			log.error("ServerConfig is null.");
+		}						
+		return "-3";
+	
+	}
+	
 }

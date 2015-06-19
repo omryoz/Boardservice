@@ -24,6 +24,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.StringTokenizer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.crypto.SecretKeyFactory;
@@ -144,7 +145,7 @@ public class MODXPokerLoginServiceImpl extends PokerConfigHandler implements Log
 			StringBuffer sb = new StringBuffer();
 			for (byte b : req.getData()) {
 				idx++;
-			    log.debug((char)b);
+	//		    log.debug((char)b);
 			    char val = (char)b;
 			//	if (idx >7 )
 			    sb.append(val);
@@ -154,19 +155,100 @@ public class MODXPokerLoginServiceImpl extends PokerConfigHandler implements Log
 			// TO DBG: activate trace of detail array below
 			log.debug("sb " + sb.toString());
 			 String logindataRequest = 	sb.toString();	
-			 log.debug("logindataRequest" + logindataRequest);
+/*			 log.debug("logindataRequest" + logindataRequest);
 			 if (logindataRequest.toUpperCase().equals("AGEVERIFICATIONDONE")) {
 				 userHasAcceptedAgeclause = true;
 			 }
+*/			 
+			 
+			boolean isBot = false;
+			String loginName = req.getUser();
+			int idxb = loginName.indexOf("_");
+			if (idxb != -1) {
+				// let bots through
+				String idStr = loginName.substring(idxb+1);
+				if (loginName.toUpperCase().startsWith("BOT")) {
+					isBot = true;
+				}
+			}
+						 
+		 
+			 log.debug("datarequest " + logindataRequest);
+			 StringTokenizer st=new StringTokenizer(logindataRequest,";");
+			 String socialNetworkId = "";
+			 String socialAvatar = "";
+			 if (!isBot) {
+				 String ageClause = st.nextToken().trim();
+				 log.debug("ageClause " + ageClause); 
+				 if (ageClause.toUpperCase().equals("AGEVERIFICATIONDONE")) {
+					 userHasAcceptedAgeclause = true;
+				 }
+				 log.debug("User has accepted clause = " + (userHasAcceptedAgeclause? "yes" : "no"));
+				 int snFlag =new Integer(st.nextToken());
+				 log.debug("authId " + (snFlag==5 || snFlag== 6?"use sn":"no sn"));
+				  socialNetworkId = (String)st.nextToken();
+				 log.debug("socialNetworkId " + socialNetworkId);
+				 socialAvatar =new String(st.nextToken());
+				 log.debug("socialAvatar " + socialAvatar);
+				 if (snFlag==5) {
+					 // overwrite default authTypeId
+					 authTypeId = 5; //force email with fb
+					 log.debug("authTypeId " + authTypeId);
+				 } else if (snFlag==6) {
+						 // overwrite default authTypeId
+					 authTypeId = 6; //force email with google plus
+					 log.debug("authTypeId " + authTypeId);
+				 } else {
+					 authTypeId = 1;
+				 }
+			 } else {
+				 socialNetworkId ="999999";
+				 socialAvatar = "";
+				 userHasAcceptedAgeclause = true;
+				 authTypeId = 1;
+			 }			 
 			LoginResponseAction response = null;
 		try {
+			log.debug("Performing authentication on " + req.getUser());
+			String userIdStr = null;
+			if (authTypeId == 5 || authTypeId == 6) {
+				log.debug("*** Social Network authentication ***");
+				userIdStr = authenticateSocialNetwork(req.getUser(), socialNetworkId, socialAvatar, getServerCfg(),userHasAcceptedAgeclause,authTypeId, needAgeAgreement);
+			}
+			else {
+				log.debug("*** Forum authentication ***");
+				userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause,authTypeId);
+			}
+			if (!userIdStr.equals("")) {
+				
+				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
+						Integer.parseInt(userIdStr)); // pid.incrementAndGet()
+				response.setErrorCode(Integer.parseInt(userIdStr));
+				String errMsg = "Login failed ";
+				switch (Integer.parseInt(userIdStr)) {
+					case -3 : errMsg += " User does not exist, please sign up same account type on forum first";
+							break;
+					case -5 : errMsg += " User must check age requirement to play due to 18+ clause";
+						break;
+					case -2 : errMsg += " User has not met required posts";
+						break;
+					case -1 : errMsg += " User password is invalid";
+						break;
+					default:
+						break;
+				}
+				
 
-			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause,authTypeId);
+				response.setErrorMessage(errMsg);
+				log.debug(Integer.parseInt(userIdStr) > 0?"Authentication successful":"Authentication failed with errorCode as " + userIdStr);
+				return response;
+			}
+/*			String userIdStr = authenticate(req.getUser(), req.getPassword(), getServerCfg(),userHasAcceptedAgeclause,authTypeId);
 			if (!userIdStr.equals("")) {
 				response = new LoginResponseAction(Integer.parseInt(userIdStr) > 0?true:false, (req.getUser().toUpperCase().startsWith("GUESTXDEMO")?req.getUser()+"_"+userIdStr:req.getUser()),
 						Integer.parseInt(userIdStr)); // pid.incrementAndGet()
 				return response;
-			}
+			}*/
 		} catch (SQLException sqle) {
 			log.error("Error authenticate", sqle);
 			response = new LoginResponseAction(false, -1);
