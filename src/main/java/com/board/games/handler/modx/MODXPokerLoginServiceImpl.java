@@ -19,6 +19,7 @@ package com.board.games.handler.modx;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -167,9 +168,9 @@ public class MODXPokerLoginServiceImpl extends PokerConfigHandler implements Log
 			if (idxb != -1) {
 				// let bots through
 				String idStr = loginName.substring(idxb+1);
-				if (loginName.toUpperCase().startsWith("BOT")) {
+		//		if (loginName.toUpperCase().startsWith("BOT")) {
 					isBot = true;
-				}
+		//		}
 			}
 						 
 		 
@@ -320,18 +321,18 @@ public class MODXPokerLoginServiceImpl extends PokerConfigHandler implements Log
 			if (idx != -1) {
 				// let bots through
 				String idStr = user.substring(idx+1);
-				if (user.toUpperCase().startsWith("BOT")) {
+			//	if (user.toUpperCase().startsWith("BOT")) {
 					if (serverConfig.isUseIntegrations()) {
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user,  "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true,false,0);
+						Long userId = walletAdapter.checkCreateNewUser(idStr, idStr, "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), (serverConfig.getInitialAmount().multiply(new BigDecimal(20))),true,false,0);
 						return String.valueOf(userId);
 					} else {
 						return idStr;
 					}
 
-				}
+			//	}
 			}
 			if (user.toUpperCase().startsWith("GUESTXDEMO")) {
 				return String.valueOf(pid.incrementAndGet());

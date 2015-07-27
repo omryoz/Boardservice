@@ -20,6 +20,7 @@ package com.board.games.handler.phpbb3;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.sql.Connection;
@@ -33,6 +34,7 @@ import com.board.games.service.wallet.WalletAdapter;
 
 import org.apache.log4j.Logger;
 import org.ini4j.Ini;
+import org.mindrot.jbcrypt.BCrypt;
 
 import com.board.games.config.ServerConfig;
 import com.cubeia.firebase.api.action.local.LoginRequestAction;
@@ -40,7 +42,6 @@ import com.cubeia.firebase.api.action.local.LoginResponseAction;
 import com.cubeia.firebase.api.login.LoginHandler;
 import com.cubeia.firebase.api.service.ServiceRouter;
 import com.board.games.handler.generic.PokerConfigHandler;
-import com.board.games.helper.BCrypt;
 import com.board.games.helper.PHPBB3Password;
 
 public class PHPBB3PokerLoginServiceImpl extends PokerConfigHandler implements LoginHandler {
@@ -198,7 +199,7 @@ public class PHPBB3PokerLoginServiceImpl extends PokerConfigHandler implements L
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, "UNUSED",  new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),true,false,0);
+						Long userId = walletAdapter.checkCreateNewUser(idStr, idStr, "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), (serverConfig.getInitialAmount().multiply(new BigDecimal(20))),true,false,0);
 						return String.valueOf(userId);
 					} else {
 						return idStr;

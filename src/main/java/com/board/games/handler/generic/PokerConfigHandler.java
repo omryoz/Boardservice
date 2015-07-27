@@ -58,6 +58,39 @@ public class PokerConfigHandler {
 		return serverCfg;
 	}
 
+	protected String authenticateBot(String user, String uId, String socialAvatar, ServerConfig serverConfig, boolean checkAge, int authTypeId, boolean needAgeAgreement ) throws Exception {
+		if (serverConfig != null) {	
+			if (serverConfig.isUseIntegrations()) {
+				
+				WalletAdapter walletAdapter = new WalletAdapter();
+				log.debug("Calling createWalletAccount");
+				Long userId = walletAdapter.checkCreateNewUser(uId, user,  socialAvatar, new Long(1), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), serverConfig.getInitialAmount(),checkAge, needAgeAgreement, authTypeId);
+				
+				if (userId < 0 ) {
+					log.debug("Player did did not accept age clause");
+					// user did not accept age clauses
+					return "-5";
+				}
+				log.debug("assigned new id as #" + String.valueOf(userId));
+				return String.valueOf(userId);
+	/*						if (posts >= 1) {
+						return String.valueOf(member_id);
+					} else {
+						log.error("Required number of posts not met, denied login");
+						return "-2";
+					}
+	*/
+			} else {
+				return String.valueOf(uId);
+			}
+		
+		} else {
+			log.error("ServerConfig is null.");
+		}						
+		return "-3";
+	
+	}	
+	
 	protected String authenticateSocialNetwork(String user, String uId, String socialAvatar, ServerConfig serverConfig, boolean checkAge, int authTypeId, boolean needAgeAgreement ) throws Exception {
 		if (serverConfig != null) {	
 			if (serverConfig.isUseIntegrations()) {
@@ -90,5 +123,7 @@ public class PokerConfigHandler {
 		return "-3";
 	
 	}
+	
+
 	
 }

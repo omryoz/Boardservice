@@ -45,6 +45,7 @@ public class WalletAdapter {
 	private WalletServiceClient walletService;
 
 	private static final String EXTERNAL_USERNAME_ATTRIBUTE = "externalUsername";
+	private static final String FAKE_AVATAR_URL = "FAKE_SOCIAL_AVATAR_URL";
 	private static final String FB_AVATAR_URL = "FB_SOCIAL_AVATAR_URL";
 	private static final String GOOGLEPLUS_AVATAR_URL = "GOOGLEPLUS_SOCIAL_AVATAR_URL";
 	private static final String CURRENT_SOCIAL_NETWORK_TYPE = "CURRENT_SOCIAL_NETWORK_TYPE";
@@ -94,6 +95,10 @@ public class WalletAdapter {
 				log.debug("Setting social network type " + String.valueOf(authTypeId) );
 				user.getAttributes().put(CURRENT_SOCIAL_NETWORK_TYPE, String.valueOf(authTypeId));
 				switch (authTypeId) {
+					case 0:
+						log.debug("Setting fake social network avatar " + socialAvatar );
+						user.getAttributes().put(FAKE_AVATAR_URL, socialAvatar);
+						break;
 					case 5:
 						log.debug("Setting fb social network avatar " + socialAvatar );
 						user.getAttributes().put(FB_AVATAR_URL, socialAvatar);
@@ -117,7 +122,7 @@ public class WalletAdapter {
 				log.error("Create user failed (null)");
 			}
 		} else { 
-			String value = user.getAttributes().get("AGE_ACCEPTANCE_REQUIRED_DONE");
+/*			String value = user.getAttributes().get("AGE_ACCEPTANCE_REQUIRED_DONE");
 			if (value == null || (value != null && !value.equals("1"))) {
 				if (hasClauseAgreed) {
 					user.getAttributes().put("AGE_ACCEPTANCE_REQUIRED_DONE", "1");
@@ -129,7 +134,7 @@ public class WalletAdapter {
 					return new Long(-9999);
 				}
 			}
-			log.debug("User found and pass age check. Will not create new.");
+			log.debug("User found and pass age check. Will not create new.");*/
 			// Always update user authenticate
 			// Always update attributes since user may have change avatar/name or user simply back and forth forum and social network
 			// so previously was 1 , now must be updated
@@ -139,6 +144,10 @@ public class WalletAdapter {
 			log.debug("Setting social network type " + String.valueOf(authTypeId) );
 			user.getAttributes().put(CURRENT_SOCIAL_NETWORK_TYPE, String.valueOf(authTypeId));
 			switch (authTypeId) {
+				case 0:
+					log.debug("Setting fake social network avatar " + socialAvatar );
+					user.getAttributes().put(FAKE_AVATAR_URL, socialAvatar);
+					break;
 				case 5:
 					log.debug("Setting fb social network avatar " + socialAvatar );
 					user.getAttributes().put(FB_AVATAR_URL, socialAvatar);

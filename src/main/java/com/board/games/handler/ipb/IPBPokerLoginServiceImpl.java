@@ -31,10 +31,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.ini4j.Ini;
+import org.mindrot.jbcrypt.BCrypt;
 
 import com.board.games.config.ServerConfig;
 import com.board.games.handler.generic.PokerConfigHandler;
-import com.board.games.helper.BCrypt;
 import com.board.games.helper.HashHelper;
 import com.board.games.model.PlayerProfile;
 import com.board.games.service.wallet.WalletAdapter;
@@ -122,25 +122,27 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 
 			// Must be the very first call
 			initialize();			
-			boolean userHasAcceptedAgeclause = false;
+			boolean userHasAcceptedAgeclause = true; // force to true
 		//	boolean useFacebookAuthentication = false;
 			//log.debug("Data login " + req.getData());
 			
-			boolean isBot = false;
+/*			boolean isBot = false;
 			String loginName = req.getUser();
 			int idxb = loginName.indexOf("_");
 			if (idxb != -1) {
 				// let bots through
-				String idStr = loginName.substring(idxb+1);
-				if (loginName.toUpperCase().startsWith("BOT")) {
+//				String idStr = loginName.substring(idxb+1);
+//				if (loginName.toUpperCase().startsWith("BOT")) {
 					isBot = true;
-				}
-			}
+//				}
+			}*/
 			
 			int count = 0;
 			int idx = 0;
 			int ref =0;
 			StringBuffer sb = new StringBuffer();
+			log.debug("request data length " + req.getData().length);
+			log.debug("Dump request : " + req.toString());
 			for (byte b : req.getData()) {
 				idx++;
 		//	    log.debug((char)b);
@@ -158,20 +160,28 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 			 StringTokenizer st=new StringTokenizer(logindataRequest,";");
 			 String socialNetworkId = "";
 			 String socialAvatar = "";
-			 if (!isBot) {
-				 String ageClause = st.nextToken().trim();
+			 
+			 
+				boolean isBot = false;
+log.debug("Token size " + st.countTokens());
+				if (st.countTokens()>3)		 {
+/*			 if (!isBot) {
+*/				 String ageClause = st.nextToken().trim();
 				 log.debug("ageClause " + ageClause); 
-				 if (ageClause.toUpperCase().equals("AGEVERIFICATIONDONE")) {
-					 userHasAcceptedAgeclause = true;
-				 }
+//				 if (ageClause.toUpperCase().equals("AGEVERIFICATIONDONE")) {
+//					 userHasAcceptedAgeclause = true;
+//				 }
 				 log.debug("User has accepted clause = " + (userHasAcceptedAgeclause? "yes" : "no"));
 				 int snFlag =new Integer(st.nextToken());
-				 log.debug("authId " + (snFlag==5 || snFlag== 6?"use sn":"no sn"));
+				 log.debug("authId " + (snFlag==5 || snFlag== 6 || snFlag== 0?"use sn":"no sn"));
 				  socialNetworkId = (String)st.nextToken();
 				 log.debug("socialNetworkId " + socialNetworkId);
 				 socialAvatar =new String(st.nextToken());
 				 log.debug("socialAvatar " + socialAvatar);
-				 if (snFlag==5) {
+				 if (snFlag==0) {
+						isBot = true;
+						authTypeId = 0;
+				 } else if (snFlag==5) {
 					 // overwrite default authTypeId
 					 authTypeId = 5; //force email with fb
 					 log.debug("authTypeId " + authTypeId);
@@ -187,12 +197,25 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
 				 socialAvatar = "";
 				 userHasAcceptedAgeclause = true;
 				 authTypeId = 1;
+				 log.debug("authTypeId " + authTypeId);
 			 }
+				 
+				 
+				//}
 			 LoginResponseAction response = null;
 		try {
 			log.debug("Performing authentication on " + req.getUser());
 			String userIdStr = null;
-			if (authTypeId == 5 || authTypeId == 6) {
+			if (authTypeId == 0) {
+				log.debug("*** Bots  authentication ***");
+/*				String loginName = req.getUser();
+				int idxb = loginName.indexOf("_");
+				if (idxb != -1) {
+					// let bots through
+					String idStr = loginName.substring(idxb+1);
+				}*/
+				userIdStr = authenticateBot(req.getUser(), socialNetworkId, socialAvatar, getServerCfg(),userHasAcceptedAgeclause,authTypeId, needAgeAgreement);
+			} else if (authTypeId == 5 || authTypeId == 6) {
 				log.debug("*** Social Network authentication ***");
 				userIdStr = authenticateSocialNetwork(req.getUser(), socialNetworkId, socialAvatar, getServerCfg(),userHasAcceptedAgeclause,authTypeId, needAgeAgreement);
 			}
@@ -292,24 +315,25 @@ public class IPBPokerLoginServiceImpl extends PokerConfigHandler implements Logi
  			if (user.toUpperCase().startsWith("SYSFP97")) {
 				return "123456789";
 			}*/
-			int idx = user.indexOf("_");
+/*			int idx = user.indexOf("_");
 			if (idx != -1) {
 				// let bots through
 				String idStr = user.substring(idx+1);
-				if (user.toUpperCase().startsWith("BOT")) {
+			//	if (user.toUpperCase().startsWith("BOT")) {
+				
 					if (serverConfig.isUseIntegrations()) {
 						WalletAdapter walletAdapter = new WalletAdapter();
 						log.debug("Calling createWalletAccount");
 						//walletAdapter.createWalletAccount(new Long(String.valueOf(member_id)));
-						Long userId = walletAdapter.checkCreateNewUser(idStr, user, "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), (serverConfig.getInitialAmount().multiply(new BigDecimal(20))),true,false,0);
+						Long userId = walletAdapter.checkCreateNewUser(idStr, idStr, user, "UNUSED", new Long(0), serverConfig.getCurrency(), serverConfig.getWalletBankAccountId(), (serverConfig.getInitialAmount().multiply(new BigDecimal(20))),true,false,0);
 						return String.valueOf(userId);
 					} else {
-						return idStr;
+						return getFakeName()+idStr;
 					}
 
 				}
-			}
-			if (user.toUpperCase().startsWith("GUESTXDEMO")) {
+			//}
+*/			if (user.toUpperCase().startsWith("GUESTXDEMO")) {
 				return String.valueOf(pid.incrementAndGet()+500000);
 			}
 			

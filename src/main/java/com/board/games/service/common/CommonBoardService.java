@@ -26,12 +26,16 @@ import net.sf.json.JSONObject;
 import net.sf.json.JSONSerializer;
 
 import org.apache.log4j.Logger;
+import org.codehaus.jackson.JsonGenerationException;
+import org.codehaus.jackson.map.JsonMappingException;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.ini4j.Ini;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.FileSystemXmlApplicationContext;
 
 import com.board.games.dao.GenericDAO;
 import com.board.games.model.PlayerProfile;
+import com.board.games.model.Profile;
 import com.board.games.service.BoardService;
 import com.cubeia.firebase.api.action.GameDataAction;
 import com.cubeia.firebase.api.action.local.LoginRequestAction;
@@ -49,7 +53,9 @@ import com.cubeia.games.poker.routing.service.io.protocol.PokerProtocolMessage;
 import com.cubeia.games.poker.util.ProtocolFactory;
 import com.google.gson.Gson;
 import com.google.inject.Singleton;
-
+import com.sun.jersey.api.client.Client;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
 @Singleton
 public class CommonBoardService implements BoardService {
    StyxSerializer styxDecoder = new StyxSerializer(new ProtocolObjectFactory());
@@ -96,7 +102,7 @@ public class CommonBoardService implements BoardService {
 		}	
 	}
 
-    public ProtocolObject unpack(ServiceTransportPacket packet) {
+/*    public ProtocolObject unpack(ServiceTransportPacket packet) {
         // Create the user packet
         ProtocolObject servicePacket = null;
         try {
@@ -105,11 +111,11 @@ public class CommonBoardService implements BoardService {
             log.error("Could not unpack gamedata", e);
         }
         return servicePacket;
-    }		
+    }	*/	
     // from client,we receive JSON (var jsonString=FIREBASE.Styx.toJSON(protocolObject);
 	@Override
 	public ClientServiceAction onAction(ServiceAction action) {
-		String stringDataFromClient = "";
+/*		String stringDataFromClient = "";
 		String parsedServiceData = "";
 		String clientRequest = "";
 		log.debug("Inside onAction of CommonBoardService : tableId " + action.getTableId() + " playerid " + action.getPlayerId());
@@ -153,21 +159,21 @@ public class CommonBoardService implements BoardService {
 		
 		
 		
-/*		 parsedServiceData = new String(parsed, "UTF-8");
+		 parsedServiceData = new String(parsed, "UTF-8");
 		 
 		 
 		 System.out.println("parsedServiceData " + parsedServiceData);
-		 */
+		 
 		 
 
 		} catch (Exception e) {
 			log.error("Exception JSOn  " + e.toString());
 		}
-/*		 StringTokenizer requestSt2=new StringTokenizer(parsedServiceData,"?");
+		 StringTokenizer requestSt2=new StringTokenizer(parsedServiceData,"?");
 		 String clientRequest2= requestSt2.nextToken();
 		 System.out.println("clientRequest2 " + clientRequest2);
 		 StringTokenizer requestSt=new StringTokenizer(parsedServiceData,"?");
-		 String clientRequest= requestSt.nextToken(); */
+		 String clientRequest= requestSt.nextToken(); 
 		log.debug("clientRequest " + clientRequest);
 		 StringTokenizer st=new StringTokenizer(clientRequest,";");
 		 String requestData = st.nextToken().trim();
@@ -180,9 +186,10 @@ public class CommonBoardService implements BoardService {
 		 String tableId = null;
 		 String achievementId = null;
 		 String avatar_location = "";
+		 String player_name = "";
 		 boolean bonusHandling = false;
 		 ClientServiceAction dataToClient = null;
-		 
+		 Profile user = null;
 		 switch (request) {
 
 		 case 2 :
@@ -267,7 +274,7 @@ public class CommonBoardService implements BoardService {
 						//	log.debug("data to client: " + stringDataToClient);
 								return dataToClient;
 								
-/*
+
        StyxSerializer styx = new StyxSerializer(null);
         PongPacket pongPacket = new PongPacket(identifier);
         GameDataAction gameDataAction = new GameDataAction(playerId, table.getId());
@@ -291,7 +298,7 @@ public class CommonBoardService implements BoardService {
 	}
 
 								
- */
+ 
 						}
 						
 				}
@@ -302,21 +309,108 @@ public class CommonBoardService implements BoardService {
 			log.error("Undefined request");
 
 			break;
-			 
+				 case 4 :
+					 tableId =(new String(st.nextToken()));
+						log.debug("Retrieving table id for table " + tableId);
+						if (st.hasMoreTokens()) {
+							 playerId =(new String(st.nextToken()));
+							 playerId = playerId.trim();
+								log.debug("Retrieving table id for table " + tableId + " and playerId " + playerId);
+								//FIXME: need to query user service to get real bot name
+								// need the user id to query player at lobby level to get their avatar if one set
+								
+								
+								
+					//			try {
+
+									Client client = Client.create();
+									String restUrl = "http://famepoker.com:8080/famews-1.0.0/gameRestService/public/player/" + playerId;
+
+									WebResource webResource = client
+											.resource(restUrl);
+
+									ClientResponse response = webResource.accept("application/json")
+											.get(ClientResponse.class);
+
+									if (response.getStatus() != 200) {
+										throw new RuntimeException("Failed : HTTP error code : "
+												+ response.getStatus());
+									}
+
+									String output = response.getEntity(String.class);
+
+//									System.out.println("Output from Server .... \n");
+//									System.out.println(output);
+									
+									ObjectMapper mapper = new ObjectMapper();
+									 
+									
+									try {
+								 
+										// read from file, convert it to user class
+										 user = mapper.readValue(output, Profile.class);
+								 
+
+										log.debug(user.getUserName());
+								 
+									} catch (JsonGenerationException e) {
+								 
+										e.printStackTrace();
+								 
+									} catch (JsonMappingException e) {
+								 
+										e.printStackTrace();
+
+								 
+									}								
+								
+						}
+						if (playerProfile != null) {
+							log.debug("Found userid " + playerId);
+							if (playerProfile.getName().equals("")) {
+								player_name = "Anonymous";
+							} else {
+								player_name = playerProfile.getName();
+							}
+						} else {
+							player_name = "Anonymous";
+							log.debug("Player profile is null using name as : " + "Anonymous");
+						}
+						if (user!=null) {
+							player_name = user.getUserName();
+						} else {
+							player_name = "Anonymous";
+						}
+						
+						log.debug("player name " + player_name);
+						stringDataToClient = "4;"+tableId+";"+playerId+";"+player_name; 
+						
+				
+						log.debug("sending data to client: " + stringDataToClient);
+						// set up action with data to send to the client
+						
+				//			log.debug("String from json array"+parsedServiceData);
+
+						
+						dataToClient = new ClientServiceAction(action.getPlayerId(), action.getSeq(), stringDataToClient.getBytes("UTF-8"));
+						log.debug("data to client: " + dataToClient);
+										
+						break;
+						//FIXME			 
 		 }
 			return dataToClient;
 	
 //		ServiceTransportPacket stp = (ServiceTransportPacket) Base64.decodeBase64(action.getData()));
 		
-/*		System.out.println("actiondata decoded =  " + actiondata);	
+		System.out.println("actiondata decoded =  " + actiondata);	
 		try {
 			ProtocolObject packet = unpack(actiondata);
 			if (packet != null) {
 				if (packet instanceof ServiceTransportPacket) {
 				System.out.println("Found *********************************** ServiceTransportPacket");
 				}
-			}*/
-/*	
+			}
+	
  * 
  * 
 case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
@@ -343,17 +437,17 @@ case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
 				}
 			} else {
 				System.out.println("protocol is null");	
-			}*/
+			}
 			// Assume the client sent an UTF-8 encoded string
-	/*		String stringDataFromClient = new String(action.getData(),"UTF-8");
+			String stringDataFromClient = new String(action.getData(),"UTF-8");
 			log.debug("Receiving request data from client " + stringDataFromClient);
 			System.out.println("Receiving request data from client " + stringDataFromClient);
 			 StringTokenizer st=new StringTokenizer(stringDataFromClient,";");
 			 int request =Integer.parseInt(st.nextToken());
-	*/		 
+			 
 			 // processs only tableId in serveicedata and request code
 
-/*			
+			
 			 StringTokenizer st=new StringTokenizer(stringDataFromClient,";");
 			 int request =Integer.parseInt(st.nextToken());
 			 String stringDataToClient = null;
@@ -418,7 +512,7 @@ case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
 				 
 			 }
 			 
-*/			
+			
 				
 
 		} catch (UnsupportedEncodingException use) {
@@ -427,7 +521,7 @@ case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
 		} catch (Exception e) {
 			log.error("Error processing client data", e);
 		}
-		return null;
+*/		return null;
 	}
 	
 	@Override	
@@ -439,7 +533,7 @@ case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
 			else
 				applicationContext = new FileSystemXmlApplicationContext(WINDOWS_APP_CTX_CONFIG_FILE);
 		}*/	
-		log.debug("getUserProfile " + userId);
+/*		log.debug("getUserProfile " + userId);
 		if (getApplicationContext() != null) {		
 	       GenericDAO genericDAO = (GenericDAO) getApplicationContext().getBean(daoConfig);
 	       PlayerProfile playerProfile = genericDAO.selectPlayerProfile(userId);
@@ -449,7 +543,7 @@ case FB_PROTOCOL.ServiceTransportPacket.CLASSID :
 	       }
 		} else {
 			log.error("getApplicationContext() is null");
-		}
+		}*/
 		return null;       
     }	
     	
